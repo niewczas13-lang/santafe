@@ -58,7 +58,7 @@ On Vercel, add Upstash Redis from the Marketplace or create a Redis database in 
 The app stores:
 
 - `auction-alerts:seen`: IDs already processed.
-- `auction-alerts:recent`: recent matched listings.
+- `auction-alerts:recent`: up to 500 recent matched listings shown on the dashboard.
 - `auction-alerts:last-check`: last cron summary.
 - `auction-alerts:vin:<vin>`: VIN decode cache for 30 days.
 

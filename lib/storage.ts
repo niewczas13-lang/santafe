@@ -15,6 +15,7 @@ export const SEEN_KEY = "auction-alerts:seen";
 export const RECENT_KEY = "auction-alerts:recent";
 export const LAST_CHECK_KEY = "auction-alerts:last-check";
 export const FILTERS_KEY = "auction-alerts:filters";
+export const RECENT_HISTORY_LIMIT = 500;
 
 let redisSingleton: Redis | null = null;
 
@@ -46,11 +47,11 @@ export async function upsertRecentVehicle(
   vehicle: AuctionVehicle,
   redis = getRedis(),
 ): Promise<void> {
-  const current = await getRecent(100, redis);
+  const current = await getRecent(RECENT_HISTORY_LIMIT, redis);
   const next = [
     vehicle,
     ...current.filter((item) => item.id !== vehicle.id),
-  ].slice(0, 100);
+  ].slice(0, RECENT_HISTORY_LIMIT);
 
   await redis.del(RECENT_KEY);
 
@@ -63,7 +64,7 @@ export async function upsertRecentVehicle(
 }
 
 export async function getRecent(
-  limit = 20,
+  limit = RECENT_HISTORY_LIMIT,
   redis = getRedis(),
 ): Promise<AuctionVehicle[]> {
   const items = await redis.lrange<string | AuctionVehicle>(RECENT_KEY, 0, limit - 1);

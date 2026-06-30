@@ -57,11 +57,11 @@ export default async function DashboardPage() {
                   Recent matches
                 </h2>
                 <p className="mt-1 text-sm text-[#667161]">
-                  Last 20 matched vehicles stored in Redis.
+                  All stored matched vehicles, newest first.
                 </p>
               </div>
               <span className="rounded-full border border-[#d9dfd2] bg-[#eef2ea] px-3 py-1 text-sm font-medium text-[#2f6f52]">
-                {recent.length} visible
+                {recent.length} stored
               </span>
             </div>
           </div>
@@ -94,7 +94,7 @@ async function loadDashboardState(): Promise<
     loadEnv();
     const [stats, recent, filters] = await Promise.all([
       getStats(),
-      getRecent(20),
+      getRecent(),
       getAuctionFilters(),
     ]);
 

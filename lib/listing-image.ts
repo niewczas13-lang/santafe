@@ -1,5 +1,13 @@
 import * as cheerio from "cheerio";
 import type { AuctionVehicle } from "./types";
+import { isRecord, normalizeRunStatus } from "./providers/shared";
+
+type ListingDetails = Partial<
+  Pick<
+    AuctionVehicle,
+    "engine" | "exteriorColor" | "imageUrl" | "interiorColor" | "runStatus"
+  >
+>;
 
 export function extractListingImageUrl(
   html: string,
@@ -25,13 +33,27 @@ export function extractListingImageUrl(
     }
   }
 
-  return undefined;
+  return extractListingDetailsFromHtml(html, pageUrl).imageUrl;
+}
+
+export function extractListingDetailsFromHtml(
+  html: string,
+  pageUrl: string,
+): ListingDetails {
+  return extractIaaiProductDetails(html, pageUrl);
 }
 
 export async function enrichVehicleImage(
   vehicle: AuctionVehicle,
 ): Promise<AuctionVehicle> {
-  if (vehicle.imageUrl) {
+  if (
+    vehicle.imageUrl &&
+    vehicle.engine &&
+    vehicle.exteriorColor &&
+    vehicle.interiorColor &&
+    vehicle.runStatus &&
+    vehicle.runStatus !== "unknown"
+  ) {
     return vehicle;
   }
 
@@ -49,11 +71,184 @@ export async function enrichVehicleImage(
       return vehicle;
     }
 
-    const imageUrl = extractListingImageUrl(await response.text(), vehicle.url);
-    return imageUrl ? { ...vehicle, imageUrl } : vehicle;
+    const html = await response.text();
+    const details = extractListingDetailsFromHtml(html, vehicle.url);
+    const imageUrl =
+      vehicle.imageUrl ?? details.imageUrl ?? extractListingImageUrl(html, vehicle.url);
+
+    return mergeDefinedVehicleFields(vehicle, {
+      ...details,
+      imageUrl: vehicle.imageUrl ?? details.imageUrl ?? imageUrl,
+    });
   } catch {
     return vehicle;
   }
+}
+
+function extractIaaiProductDetails(html: string, pageUrl: string): ListingDetails {
+  const $ = cheerio.load(html);
+  const script = $("#ProductDetailsVM").text().trim();
+
+  if (!script) {
+    return {};
+  }
+
+  try {
+    const data = JSON.parse(script) as unknown;
+    if (!isRecord(data)) {
+      return {};
+    }
+
+    const inventoryView = getRecord(data, "inventoryView");
+    const attributes = getRecord(inventoryView, "attributes");
+    const vehicleInformation = listValues(getRecord(inventoryView, "vehicleInformation"));
+    const vehicleDescription = listValues(getRecord(inventoryView, "vehicleDescription"));
+    const imageDimensions = getRecord(inventoryView, "imageDimensions");
+
+    const runAndDrive = pickString(attributes, ["RunAndDrive"]);
+    const startText =
+      truthyString(runAndDrive) === true
+        ? "Run and Drive"
+        : pickString(attributes, ["StartsDesc", "StartCode", "EngineStarts1"]) ??
+          pickKeyedValue(vehicleInformation, ["StartCode", "Starts", "EngineStarts"]);
+
+    return withoutUndefined({
+      engine:
+        pickString(attributes, ["EngineSize", "EngineInformation", "EngineInfo"]) ??
+        pickKeyedValue(vehicleDescription, ["Engine"]),
+      exteriorColor: pickString(attributes, ["ExteriorColor", "Color"]),
+      imageUrl: extractIaaiImageUrl(imageDimensions, pageUrl),
+      interiorColor: pickString(attributes, ["InteriorColor"]),
+      runStatus: startText ? normalizeRunStatus(startText) : undefined,
+    });
+  } catch {
+    return {};
+  }
+}
+
+function extractIaaiImageUrl(
+  imageDimensions: Record<string, unknown> | undefined,
+  pageUrl: string,
+): string | undefined {
+  const keys = listValues(getRecord(imageDimensions, "keys"));
+  const firstKey = keys
+    .map((item) => pickString(item, ["k", "K", "key", "imageKey"]))
+    .find(Boolean);
+
+  if (!firstKey) {
+    return undefined;
+  }
+
+  return resolveImageUrl(
+    `https://vis.iaai.com/resizer?imageKeys=${encodeURIComponent(
+      firstKey,
+    )}&width=640&height=480`,
+    pageUrl,
+  );
+}
+
+function mergeDefinedVehicleFields(
+  vehicle: AuctionVehicle,
+  details: ListingDetails,
+): AuctionVehicle {
+  return {
+    ...vehicle,
+    engine: details.engine ?? vehicle.engine,
+    exteriorColor: details.exteriorColor ?? vehicle.exteriorColor,
+    imageUrl: details.imageUrl ?? vehicle.imageUrl,
+    interiorColor: details.interiorColor ?? vehicle.interiorColor,
+    runStatus: details.runStatus ?? vehicle.runStatus,
+  };
+}
+
+function withoutUndefined(details: ListingDetails): ListingDetails {
+  return Object.fromEntries(
+    Object.entries(details).filter(([, value]) => value !== undefined),
+  ) as ListingDetails;
+}
+
+function getRecord(
+  value: unknown,
+  key: string,
+): Record<string, unknown> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const child = value[key];
+  return isRecord(child) ? child : undefined;
+}
+
+function listValues(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) {
+    return value.filter(isRecord);
+  }
+
+  if (!isRecord(value)) {
+    return [];
+  }
+
+  const values = value.$values;
+  if (Array.isArray(values)) {
+    return values.filter(isRecord);
+  }
+
+  return [];
+}
+
+function pickString(
+  item: Record<string, unknown> | undefined,
+  keys: string[],
+): string | undefined {
+  if (!item) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return value.trim();
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+
+    if (typeof value === "boolean") {
+      return String(value);
+    }
+  }
+
+  return undefined;
+}
+
+function pickKeyedValue(
+  items: Record<string, unknown>[],
+  keys: string[],
+): string | undefined {
+  const normalizedKeys = keys.map(normalizeKey);
+
+  for (const item of items) {
+    const key = pickString(item, ["key", "Key"]);
+    const value = pickString(item, ["value", "Value"]);
+    if (key && value && normalizedKeys.includes(normalizeKey(key))) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function truthyString(value: string | undefined): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return ["1", "true", "yes", "y"].includes(value.toLowerCase());
 }
 
 function resolveImageUrl(
