@@ -38,6 +38,8 @@ export function normalizeVehicle(
   ]);
   const stockNumber = pickString(item, [
     "stockNumber",
+    "Stock #",
+    "stock #",
     "stock",
     "stock_number",
     "stockNo",
@@ -52,9 +54,12 @@ export function normalizeVehicle(
       "url",
       "link",
       "href",
+      "item_url",
       "vehicleUrl",
       "lotUrl",
       "detailUrl",
+      "detail_url",
+      "Detail URL",
     ]) ?? fallbackUrl;
 
   if (!title || !url) {
@@ -72,13 +77,50 @@ export function normalizeVehicle(
     model: pickString(item, ["model", "vehicleModel"]),
     trim: pickString(item, ["trim", "series", "subModel", "vehicleTrim"]),
     title,
-    odometer: pickString(item, ["odometer", "mileage", "odo"]),
-    damage: pickString(item, ["damage", "primaryDamage", "lossType"]),
-    location: pickString(item, ["location", "yardLocation", "branch", "city"]),
-    saleDate: pickString(item, ["saleDate", "auctionDate", "saleTime"]),
-    currentBid: pickString(item, ["currentBid", "bid", "highBid", "preBid"]),
-    buyNowPrice: pickString(item, ["buyNowPrice", "buyNow", "price"]),
-    imageUrl: pickString(item, ["imageUrl", "image", "thumbnail", "photoUrl"]),
+    odometer: pickOdometer(item),
+    damage: pickString(item, [
+      "damage",
+      "primaryDamage",
+      "primary_damage",
+      "Primary Damage",
+      "lossType",
+      "loss_type",
+    ]),
+    location: pickString(item, [
+      "location",
+      "sale_location",
+      "yardLocation",
+      "branch",
+      "Branch",
+      "city",
+    ]),
+    saleDate: pickString(item, [
+      "saleDate",
+      "auctionDate",
+      "auction_date",
+      "saleTime",
+      "sale_time",
+    ]),
+    currentBid: pickString(item, [
+      "currentBid",
+      "current_bid",
+      "bid",
+      "highBid",
+      "preBid",
+    ]),
+    buyNowPrice: pickString(item, [
+      "buyNowPrice",
+      "buy_it_now_price",
+      "buyNow",
+      "price",
+    ]),
+    imageUrl: pickString(item, [
+      "imageUrl",
+      "image_url",
+      "image",
+      "thumbnail",
+      "photoUrl",
+    ]),
     url,
     raw: item,
   };
@@ -190,6 +232,17 @@ function pickNumber(item: UnknownRecord, keys: string[]): number | undefined {
   }
 
   return undefined;
+}
+
+function pickOdometer(item: UnknownRecord): string | undefined {
+  const value = pickString(item, ["odometer", "Odometer", "mileage", "odo"]);
+  const unit = pickString(item, ["odometer_unit", "odometerUnit"]);
+
+  if (!value) {
+    return undefined;
+  }
+
+  return unit ? `${value} ${unit}` : value;
 }
 
 function buildTitle(item: UnknownRecord): string {
