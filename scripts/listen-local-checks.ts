@@ -18,7 +18,7 @@ async function main() {
 
   loadEnv();
   const intervalMs = getPollIntervalMs();
-  const headless = process.env.LOCAL_LISTENER_HEADLESS?.toLowerCase() !== "false";
+  const headless = process.env.LOCAL_LISTENER_HEADLESS?.toLowerCase() === "true";
 
   console.log(
     `[${new Date().toISOString()}] Local manual check listener started; polling every ${

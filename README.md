@@ -112,7 +112,7 @@ Start or reinstall only the manual listener:
 npm run schedule:listener
 ```
 
-The scheduled commands write logs to `.local-logs/`. Copart currently needs a normal local Chromium window, so scheduled `check:local` runs headed by default. Manual checks from the dashboard run headless by default via `LOCAL_LISTENER_HEADLESS=true`; IAAI works headless, but Copart may return no listings in that mode. Set `LOCAL_LISTENER_HEADLESS=false` only if you want dashboard-triggered checks to open a visible browser window.
+The scheduled commands write logs to `.local-logs/`. Copart currently needs a normal local Chromium window, so scheduled `check:local` and dashboard-triggered manual checks run headed by default. Set `LOCAL_LISTENER_HEADLESS=true` only if you want manual dashboard checks to run without a visible browser window; IAAI works headless, but Copart may return no listings in that mode.
 
 ## Dashboard Filters
 
