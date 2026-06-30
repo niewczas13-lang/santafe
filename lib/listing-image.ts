@@ -5,7 +5,12 @@ import { isRecord, normalizeRunStatus } from "./providers/shared";
 type ListingDetails = Partial<
   Pick<
     AuctionVehicle,
-    "engine" | "exteriorColor" | "imageUrl" | "interiorColor" | "runStatus"
+    | "engine"
+    | "exteriorColor"
+    | "imageUrl"
+    | "interiorColor"
+    | "runStatus"
+    | "saleDate"
   >
 >;
 
@@ -51,6 +56,7 @@ export async function enrichVehicleImage(
     vehicle.engine &&
     vehicle.exteriorColor &&
     vehicle.interiorColor &&
+    (vehicle.source !== "iaai" || vehicle.saleDate) &&
     vehicle.runStatus &&
     vehicle.runStatus !== "unknown"
   ) {
@@ -103,6 +109,7 @@ function extractIaaiProductDetails(html: string, pageUrl: string): ListingDetail
     const attributes = getRecord(inventoryView, "attributes");
     const vehicleInformation = listValues(getRecord(inventoryView, "vehicleInformation"));
     const vehicleDescription = listValues(getRecord(inventoryView, "vehicleDescription"));
+    const saleInformation = listValues(getRecord(inventoryView, "saleInformation"));
     const imageDimensions = getRecord(inventoryView, "imageDimensions");
 
     const runAndDrive = pickString(attributes, ["RunAndDrive"]);
@@ -120,6 +127,10 @@ function extractIaaiProductDetails(html: string, pageUrl: string): ListingDetail
       imageUrl: extractIaaiImageUrl(imageDimensions, pageUrl),
       interiorColor: pickString(attributes, ["InteriorColor"]),
       runStatus: startText ? normalizeRunStatus(startText) : undefined,
+      saleDate: normalizeIaaiAuctionDate(
+        pickKeyedValue(saleInformation, ["AuctionDateTime"]) ??
+          pickString(attributes, ["AuctionDateTime"]),
+      ),
     });
   } catch {
     return {};
@@ -158,6 +169,7 @@ function mergeDefinedVehicleFields(
     imageUrl: details.imageUrl ?? vehicle.imageUrl,
     interiorColor: details.interiorColor ?? vehicle.interiorColor,
     runStatus: details.runStatus ?? vehicle.runStatus,
+    saleDate: details.saleDate ?? vehicle.saleDate,
   };
 }
 
@@ -249,6 +261,24 @@ function truthyString(value: string | undefined): boolean | undefined {
   }
 
   return ["1", "true", "yes", "y"].includes(value.toLowerCase());
+}
+
+function normalizeIaaiAuctionDate(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  if (!normalized || /not ready|available|tbd|pending/i.test(normalized)) {
+    return undefined;
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime()) || parsed.getUTCFullYear() <= 1900) {
+    return undefined;
+  }
+
+  return parsed.toISOString();
 }
 
 function resolveImageUrl(

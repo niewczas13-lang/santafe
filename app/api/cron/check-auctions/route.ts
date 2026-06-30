@@ -96,7 +96,9 @@ async function handleCheck(request: Request) {
         env,
         filters,
       );
-      const enrichedMatches = await Promise.all(matches.map(enrichVehicleImage));
+      const enrichedMatches = (
+        await Promise.all(matches.map(enrichVehicleImage))
+      ).filter((vehicle) => matchesAuctionFilters(vehicle, filters));
       const unseen: AuctionVehicle[] = [];
 
       for (const vehicle of enrichedMatches) {
