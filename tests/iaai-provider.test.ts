@@ -77,6 +77,17 @@ describe("fetchIaaiVehicles", () => {
     const vehicles = await fetchIaaiVehicles({ env: loadEnv(requiredEnv) });
 
     expect(runActorMock).toHaveBeenNthCalledWith(
+      1,
+      "delectable_incubator/iaai-vehicles-scraper-low-cost",
+      {
+        urls: [
+          "https://www.iaai.com/Search?Keyword=hyundai%20santa%20fe%20calligraphy",
+        ],
+        maxitems: 200,
+      },
+      { token: "apify-token", timeoutMs: 35_000 },
+    );
+    expect(runActorMock).toHaveBeenNthCalledWith(
       2,
       "lulzasaur/iaa-scraper",
       {
@@ -84,7 +95,7 @@ describe("fetchIaaiVehicles", () => {
         maxResults: 200,
         scrapeDetails: true,
       },
-      { token: "apify-token" },
+      { token: "apify-token", timeoutMs: undefined },
     );
     expect(fetchMock).not.toHaveBeenCalled();
     expect(vehicles).toHaveLength(1);

@@ -11,10 +11,12 @@ import {
   type ProviderContext,
 } from "./shared";
 
+const IAAI_FAST_ACTOR_TIMEOUT_MS = 35_000;
+
 export async function fetchIaaiVehicles({
   env,
 }: ProviderContext): Promise<AuctionVehicle[]> {
-  let actorError: unknown;
+  const actorErrors: string[] = [];
 
   if (env.APIFY_TOKEN && env.APIFY_IAAI_ACTOR_ID) {
     for (const actorId of buildIaaiActorFallbackChain(env.APIFY_IAAI_ACTOR_ID)) {
@@ -25,7 +27,7 @@ export async function fetchIaaiVehicles({
           return vehicles;
         }
       } catch (error) {
-        actorError = error;
+        actorErrors.push(formatActorError(actorId, error));
       }
     }
   }
@@ -37,8 +39,12 @@ export async function fetchIaaiVehicles({
       env.MAX_RESULTS_PER_SOURCE,
     );
   } catch (error) {
-    if (actorError) {
-      throw actorError;
+    if (actorErrors.length > 0) {
+      throw new Error(
+        `IAAI actor attempts failed: ${actorErrors.join(
+          " | ",
+        )}; direct fallback failed: ${formatError(error)}`,
+      );
     }
 
     throw error;
@@ -56,7 +62,10 @@ async function fetchIaaiActorVehicles(
   const items = await runActor<unknown>(
     actorId,
     buildIaaiActorInput(env, actorId),
-    { token: env.APIFY_TOKEN },
+    {
+      token: env.APIFY_TOKEN,
+      timeoutMs: getIaaiActorTimeoutMs(actorId),
+    },
   );
 
   return takeMax(
@@ -75,4 +84,19 @@ function buildIaaiActorFallbackChain(configuredActorId: string): string[] {
   ];
 
   return [...new Set(actorIds)];
+}
+
+function getIaaiActorTimeoutMs(actorId: string): number | undefined {
+  return actorId === DEFAULT_IAAI_ACTOR_ID
+    ? IAAI_FAST_ACTOR_TIMEOUT_MS
+    : undefined;
+}
+
+function formatActorError(actorId: string, error: unknown): string {
+  return `${actorId}: ${formatError(error)}`;
+}
+
+function formatError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/\s+/g, " ").slice(0, 300);
 }
