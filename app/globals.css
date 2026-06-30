@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f7f8f5;
+  --foreground: #20231d;
+  --muted: #667161;
+  --panel: #ffffff;
+  --panel-soft: #eef2ea;
+  --line: #d9dfd2;
+  --accent: #2f6f52;
+  --accent-strong: #23533d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background:
+    linear-gradient(135deg, rgba(47, 111, 82, 0.08), transparent 32rem),
+    var(--background);
+  color: var(--foreground);
+  font-family:
+    Geist,
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(47, 111, 82, 0.2);
+}
