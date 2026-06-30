@@ -42,4 +42,17 @@ describe("loadEnv", () => {
     expect(env.APIFY_COPART_ACTOR_ID).toBeUndefined();
     expect(env.APIFY_IAAI_ACTOR_ID).toBeUndefined();
   });
+
+  it("accepts Vercel Upstash integration variable names", () => {
+    const env = loadEnv({
+      CRON_SECRET: "cron-secret",
+      TELEGRAM_BOT_TOKEN: "telegram-token",
+      TELEGRAM_CHAT_ID: "12345",
+      UPSTASH_REDIS_REST_KV_REST_API_URL: "https://example.upstash.io",
+      UPSTASH_REDIS_REST_KV_REST_API_TOKEN: "redis-token",
+    });
+
+    expect(env.UPSTASH_REDIS_REST_URL).toBe("https://example.upstash.io");
+    expect(env.UPSTASH_REDIS_REST_TOKEN).toBe("redis-token");
+  });
 });

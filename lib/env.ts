@@ -82,7 +82,7 @@ export type AppEnv = z.infer<typeof rawEnvSchema>;
 export function loadEnv(
   input: Record<string, string | undefined> = process.env,
 ): AppEnv {
-  const parsed = rawEnvSchema.parse(input);
+  const parsed = rawEnvSchema.parse(normalizeEnvAliases(input));
 
   return {
     ...parsed,
@@ -94,6 +94,22 @@ export function loadEnv(
       parsed.APIFY_TOKEN && !parsed.APIFY_IAAI_ACTOR_ID
         ? DEFAULT_IAAI_ACTOR_ID
         : parsed.APIFY_IAAI_ACTOR_ID,
+  };
+}
+
+function normalizeEnvAliases(
+  input: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  return {
+    ...input,
+    UPSTASH_REDIS_REST_URL:
+      input.UPSTASH_REDIS_REST_URL ??
+      input.UPSTASH_REDIS_REST_KV_REST_API_URL ??
+      input.KV_REST_API_URL,
+    UPSTASH_REDIS_REST_TOKEN:
+      input.UPSTASH_REDIS_REST_TOKEN ??
+      input.UPSTASH_REDIS_REST_KV_REST_API_TOKEN ??
+      input.KV_REST_API_TOKEN,
   };
 }
 
