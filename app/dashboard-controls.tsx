@@ -60,7 +60,7 @@ export function DashboardControls({
   }
 
   async function refreshNow() {
-    setState({ type: "loading", message: "Sprawdzam aukcje..." });
+    setState({ type: "loading", message: "Kolejkuje lokalne sprawdzenie..." });
     const saved = await saveCurrentFilters(filters);
 
     if (!saved.ok || !saved.filters) {
@@ -79,7 +79,9 @@ export function DashboardControls({
     });
     const payload = (await response.json()) as {
       ok: boolean;
+      queued?: boolean;
       error?: string;
+      request?: { id: string };
       totalFound?: number;
       newFound?: number;
     };
@@ -94,9 +96,11 @@ export function DashboardControls({
 
     setState({
       type: "success",
-      message: `Sprawdzone. Dopasowane: ${payload.totalFound ?? 0}, nowe: ${
-        payload.newFound ?? 0
-      }.`,
+      message: payload.queued
+        ? "Zlecone. Lokalny listener na Twoim komputerze odpali skan za chwile."
+        : `Sprawdzone. Dopasowane: ${payload.totalFound ?? 0}, nowe: ${
+            payload.newFound ?? 0
+          }.`,
     });
     router.refresh();
   }

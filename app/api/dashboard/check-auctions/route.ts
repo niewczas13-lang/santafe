@@ -1,28 +1,54 @@
 import { NextResponse } from "next/server";
 import { getEnvValidationMessage, loadEnv } from "@/lib/env";
+import {
+  enqueueManualCheckRequest,
+  getManualCheckStatus,
+  type ManualCheckSource,
+} from "@/lib/manual-check";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function GET() {
   try {
-    const env = loadEnv();
-    const url = new URL("/api/cron/check-auctions", request.url);
-    url.searchParams.set("secret", env.CRON_SECRET);
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${env.CRON_SECRET}`,
-      },
-      cache: "no-store",
-    });
-
-    const payload = (await response.json()) as unknown;
-    return NextResponse.json(payload, { status: response.status });
+    loadEnv();
+    const status = await getManualCheckStatus();
+    return NextResponse.json({ ok: true, status });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: getEnvValidationMessage(error) },
       { status: 500 },
     );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    loadEnv();
+    const source = await getRequestedSource(request);
+    const manualRequest = await enqueueManualCheckRequest({ source });
+
+    return NextResponse.json({
+      ok: true,
+      queued: true,
+      request: manualRequest,
+      message:
+        "Manual check queued. The local listener will run it when your computer is online.",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: getEnvValidationMessage(error) },
+      { status: 500 },
+    );
+  }
+}
+
+async function getRequestedSource(request: Request): Promise<ManualCheckSource> {
+  try {
+    const body = (await request.json()) as { source?: unknown };
+    return body.source === "copart" || body.source === "iaai"
+      ? body.source
+      : "all";
+  } catch {
+    return "all";
   }
 }

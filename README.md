@@ -104,7 +104,15 @@ Install Windows Task Scheduler jobs for 08:00 and 20:00 local time:
 npm run schedule:local
 ```
 
-The scheduled command writes logs to `.local-logs/`. Copart currently needs a normal local Chromium window, so `check:local` runs headed by default. To force headless mode, use `npm run check:local:headless`; IAAI works headless, but Copart may return no listings.
+This also installs and starts `SantaFeAuctionManualListener`, a local listener that polls Redis for manual check requests from the Vercel dashboard. When you click **Sprawdz teraz** in the dashboard, Vercel queues a request in Redis. If your computer is on and the listener is running, it claims that request and runs the local Playwright check.
+
+Start or reinstall only the manual listener:
+
+```powershell
+npm run schedule:listener
+```
+
+The scheduled commands write logs to `.local-logs/`. Copart currently needs a normal local Chromium window, so scheduled `check:local` runs headed by default. Manual checks from the dashboard run headless by default via `LOCAL_LISTENER_HEADLESS=true`; IAAI works headless, but Copart may return no listings in that mode. Set `LOCAL_LISTENER_HEADLESS=false` only if you want dashboard-triggered checks to open a visible browser window.
 
 ## Dashboard Filters
 

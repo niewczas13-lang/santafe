@@ -8,7 +8,9 @@
     "check:local": "tsx scripts/check-local.ts",
     "check:local:headless": "tsx scripts/check-local.ts --headless",
     "install:local-browsers": "playwright install chromium",
+    "listen:local": "tsx scripts/listen-local-checks.ts",
     "lint": "eslint .",
+    "schedule:listener": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-listener.ps1",
     "schedule:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-schedule.ps1",
     "test": "vitest run"
   },

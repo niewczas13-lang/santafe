@@ -6,6 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Runner = Join-Path $PSScriptRoot "run-local-check.ps1"
+$ListenerInstaller = Join-Path $PSScriptRoot "install-local-listener.ps1"
 $PowerShell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 
 function Register-SantaFeTask {
@@ -35,6 +36,7 @@ function Register-SantaFeTask {
 
 Register-SantaFeTask -TaskName "SantaFeAuctionCheck-Morning" -Time $Morning
 Register-SantaFeTask -TaskName "SantaFeAuctionCheck-Evening" -Time $Evening
+& $PowerShell -NoProfile -ExecutionPolicy Bypass -File $ListenerInstaller
 
 Write-Host "Installed Santa Fe local auction checks at $Morning and $Evening."
 Write-Host "Manual run: powershell -ExecutionPolicy Bypass -File `"$Runner`""
