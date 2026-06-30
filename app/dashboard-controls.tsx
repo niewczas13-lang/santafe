@@ -26,7 +26,7 @@ export function DashboardControls({
   const [filters, setFilters] = useState(initialFilters);
   const [state, setState] = useState<ActionState>({
     type: "idle",
-    message: "Calligraphy, hybryda i wnętrze nie-czarne są ustawione jako domyślne.",
+    message: "Calligraphy, hybryda i jasna tapicerka są ustawione domyślnie.",
   });
 
   const selectedStatusLabels = useMemo(
@@ -60,7 +60,7 @@ export function DashboardControls({
   }
 
   async function refreshNow() {
-    setState({ type: "loading", message: "Kolejkuje lokalne sprawdzenie..." });
+    setState({ type: "loading", message: "Kolejkuję lokalne sprawdzenie..." });
     const saved = await saveCurrentFilters(filters);
 
     if (!saved.ok || !saved.filters) {
@@ -97,7 +97,7 @@ export function DashboardControls({
     setState({
       type: "success",
       message: payload.queued
-        ? "Zlecone. Lokalny listener na Twoim komputerze odpali skan za chwile."
+        ? "Zlecone. Lokalny listener na Twoim komputerze odpali skan za chwilę."
         : `Sprawdzone. Dopasowane: ${payload.totalFound ?? 0}, nowe: ${
             payload.newFound ?? 0
           }.`,
@@ -108,37 +108,49 @@ export function DashboardControls({
   return (
     <form
       onSubmit={saveFilters}
-      className="rounded-lg border border-[#d9dfd2] bg-white/80 p-4 shadow-[0_20px_45px_-35px_rgba(32,35,29,0.35)]"
+      className="overflow-hidden rounded-lg border border-[#d9dfd2] bg-white/90 shadow-[0_22px_50px_-35px_rgba(32,35,29,0.35)]"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">
-            Filtry aukcji
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-[#667161]">
-            Szukamy Calligraphy 1.6 hybrid, bez czarnego wnętrza. Limit skanu:
-            200 wyników na źródło.
-          </p>
+      <div className="border-b border-[#e3e8dc] bg-[#fbfcfa] px-4 py-4">
+        <div className="flex flex-col gap-4 min-[520px]:flex-row min-[520px]:items-start min-[520px]:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2f6f52]">
+              Filtry aukcji
+            </p>
+            <h2 className="mt-2 text-xl font-semibold leading-tight tracking-tight">
+              Santa Fe Calligraphy
+            </h2>
+            <p className="mt-2 max-w-[36rem] text-sm leading-6 text-[#667161]">
+              Szukamy 1.6 hybrid, bez czarnej tapicerki. Limit skanu: 200 aut
+              na źródło.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={refreshNow}
+            disabled={state.type === "loading"}
+            className="min-h-11 rounded-md bg-[#2f6f52] px-4 text-sm font-semibold text-white transition-transform hover:bg-[#285f47] disabled:cursor-wait disabled:opacity-60 active:translate-y-[1px]"
+          >
+            Sprawdź teraz
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={refreshNow}
-          disabled={state.type === "loading"}
-          className="rounded-md bg-[#2f6f52] px-4 py-2 text-sm font-semibold text-white transition-transform disabled:cursor-wait disabled:opacity-60 active:translate-y-[1px]"
-        >
-          Sprawdź teraz
-        </button>
+
+        <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
+          <FilterBadge label="Trim" value="Calligraphy wymagane" />
+          <FilterBadge label="Silnik" value="Hybrid / max 2.0L" />
+          <FilterBadge label="Tapicerka" value="bez czarnej" />
+          <FilterBadge label="Status" value={selectedStatusLabels || "wszystkie"} />
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-3">
-        <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-5 px-4 py-4">
+        <div className="grid gap-3 min-[520px]:grid-cols-2">
           <Field
-            label="Kolor auta opcjonalnie"
+            label="Kolor auta"
             value={filters.exteriorColor ?? ""}
             onChange={(value) =>
               setFilters((current) => ({ ...current, exteriorColor: value }))
             }
-            placeholder="np. gray, black, white"
+            placeholder="opcjonalnie, np. white"
           />
           <Field
             label="Tapicerka nie może być"
@@ -159,13 +171,6 @@ export function DashboardControls({
             }
             placeholder="hybrid"
           />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
-          <div className="rounded-md border border-[#d9dfd2] bg-[#fbfcfa] px-3 py-2 text-sm text-[#667161]">
-            <span className="font-semibold text-[#20231d]">Calligraphy:</span>{" "}
-            zawsze wymagane
-          </div>
           <Field
             label="Max litry"
             value={String(filters.maxEngineLiters ?? 2)}
@@ -179,7 +184,7 @@ export function DashboardControls({
           />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 min-[520px]:grid-cols-2">
           <Field
             label="Aukcja od"
             type="date"
@@ -205,14 +210,14 @@ export function DashboardControls({
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667161]">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#667161]">
             Status auta
           </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 min-[520px]:grid-cols-2">
             {RUN_STATUS_OPTIONS.map((option) => (
               <label
                 key={option.value}
-                className="flex items-center gap-2 rounded-md border border-[#d9dfd2] bg-[#fbfcfa] px-3 py-2 text-sm font-medium text-[#20231d]"
+                className="flex min-h-10 items-center gap-2 rounded-md border border-[#d9dfd2] bg-[#fbfcfa] px-3 py-2 text-sm font-medium text-[#20231d] transition-colors hover:border-[#b9c5b1]"
               >
                 <input
                   type="checkbox"
@@ -236,23 +241,27 @@ export function DashboardControls({
             Aktywne: {selectedStatusLabels || "wszystkie po zapisaniu"}
           </p>
         </div>
-      </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="submit"
-          disabled={state.type === "loading"}
-          className="rounded-md border border-[#2f6f52] bg-white px-4 py-2 text-sm font-semibold text-[#2f6f52] transition-transform disabled:cursor-wait disabled:opacity-60 active:translate-y-[1px]"
-        >
-          Zapisz filtry
-        </button>
-        <p
-          className={`text-sm ${
-            state.type === "error" ? "text-[#a13d2d]" : "text-[#667161]"
-          }`}
-        >
-          {state.message}
-        </p>
+        <div className="flex flex-col gap-3 border-t border-[#e3e8dc] pt-4 min-[520px]:flex-row min-[520px]:items-center">
+          <button
+            type="submit"
+            disabled={state.type === "loading"}
+            className="min-h-10 rounded-md border border-[#2f6f52] bg-white px-4 text-sm font-semibold text-[#2f6f52] transition-transform hover:bg-[#f3f7f1] disabled:cursor-wait disabled:opacity-60 active:translate-y-[1px]"
+          >
+            Zapisz filtry
+          </button>
+          <p
+            className={`rounded-md px-3 py-2 text-sm leading-5 ${
+              state.type === "error"
+                ? "bg-[#fff5f1] text-[#a13d2d]"
+                : state.type === "success"
+                  ? "bg-[#eef7ef] text-[#2f6f52]"
+                  : "bg-[#fbfcfa] text-[#667161]"
+            }`}
+          >
+            {state.message}
+          </p>
+        </div>
       </div>
     </form>
   );
@@ -288,8 +297,8 @@ function Field({
   type?: "text" | "password" | "date";
 }) {
   return (
-    <label className="grid gap-2">
-      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667161]">
+    <label className="grid min-w-0 gap-2">
+      <span className="min-h-4 text-xs font-semibold uppercase leading-4 tracking-[0.08em] text-[#667161]">
         {label}
       </span>
       <input
@@ -297,9 +306,22 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="min-h-10 rounded-md border border-[#d9dfd2] bg-white px-3 text-sm text-[#20231d] outline-none transition-colors placeholder:text-[#9ca694] focus:border-[#2f6f52]"
+        className="min-h-11 w-full rounded-md border border-[#d9dfd2] bg-white px-3 text-sm text-[#20231d] outline-none transition-colors placeholder:text-[#9ca694] focus:border-[#2f6f52]"
       />
     </label>
+  );
+}
+
+function FilterBadge({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-[#e3e8dc] bg-white px-3 py-2">
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[#667161]">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold leading-5 text-[#20231d]">
+        {value}
+      </p>
+    </div>
   );
 }
 
