@@ -266,9 +266,15 @@ export async function fetchVehiclesFromUrls(
 
 export function buildCopartActorInput(env: AppEnv) {
   return {
-    startUrl: env.COPART_SEARCH_URLS[0] ?? DEFAULT_COPART_SEARCH_URL,
+    startUrl: buildCopartSearchUrls(env)[0],
     maxItems: env.MAX_RESULTS_PER_SOURCE,
   };
+}
+
+export function buildCopartSearchUrls(env: AppEnv): string[] {
+  return env.COPART_SEARCH_URLS.length > 0
+    ? env.COPART_SEARCH_URLS
+    : [DEFAULT_COPART_SEARCH_URL];
 }
 
 export function buildIaaiActorInput(
@@ -431,7 +437,11 @@ function findNestedImageUrl(value: unknown, depth = 0): string | undefined {
 
 function looksLikeImageUrl(value: string): boolean {
   const trimmed = value.trim();
-  return /^https?:\/\//i.test(trimmed) && /image|photo|img|vis\.iaai|copart/i.test(trimmed);
+  return (
+    /^https?:\/\//i.test(trimmed) &&
+    (/\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(trimmed) ||
+      /image|photo|img|vis\.iaai/i.test(trimmed))
+  );
 }
 
 function buildTitle(item: UnknownRecord): string {

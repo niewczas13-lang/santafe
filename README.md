@@ -75,6 +75,37 @@ IAAI thumbnails are derived from the `VehicleDetail` salvage ID when the actor d
 
 Without Apify, paste saved-search URLs into `COPART_SEARCH_URLS` and `IAAI_SEARCH_URLS`. Saved URLs should already contain your filters for Hyundai Santa Fe Calligraphy, 2024+, USA and Canada. Auction sites may block serverless fetches; in that case use Apify or adjust the saved-search source.
 
+## Free Local Playwright Checks
+
+For a free twice-daily setup, keep Vercel as the dashboard and run the scraper on your Windows machine with Playwright. This avoids Apify usage limits and uses the same Redis, filters, recent listings, and Telegram alerts as the Vercel cron.
+
+Install local browser binaries once:
+
+```powershell
+npm run install:local-browsers
+```
+
+Run a manual local check:
+
+```powershell
+npm run check:local
+```
+
+Run only one source:
+
+```powershell
+npm run check:local -- --source=iaai
+npm run check:local -- --source=copart
+```
+
+Install Windows Task Scheduler jobs for 08:00 and 20:00 local time:
+
+```powershell
+npm run schedule:local
+```
+
+The scheduled command writes logs to `.local-logs/`. Copart currently needs a normal local Chromium window, so `check:local` runs headed by default. To force headless mode, use `npm run check:local:headless`; IAAI works headless, but Copart may return no listings.
+
 ## Dashboard Filters
 
 The dashboard lets you save practical filters in Redis without redeploying:

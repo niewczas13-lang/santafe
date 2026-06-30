@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:local": "tsx scripts/check-local.ts",
+    "check:local:headless": "tsx scripts/check-local.ts --headless",
+    "install:local-browsers": "playwright install chromium",
     "lint": "eslint .",
+    "schedule:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-schedule.ps1",
     "test": "vitest run"
   },
   "dependencies": {
@@ -26,8 +30,10 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.0.0",
+    "playwright": "^1.61.1",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.1.17",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   }

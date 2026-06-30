@@ -12,6 +12,7 @@ out/
 # Local tooling/logs
 .codex/
 .agents/
+.local-logs/
 *.log
 
 # OS/editor

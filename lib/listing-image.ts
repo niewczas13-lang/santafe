@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import type { AuctionVehicle } from "./types";
 import { isRecord, normalizeRunStatus } from "./providers/shared";
 
-type ListingDetails = Partial<
+export type ListingDetails = Partial<
   Pick<
     AuctionVehicle,
     | "engine"

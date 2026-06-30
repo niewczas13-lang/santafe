@@ -1,29 +1,9 @@
 import { NextResponse } from "next/server";
 import { getEnvValidationMessage, loadEnv, type AppEnv } from "@/lib/env";
-import {
-  matchesSantaFeCalligraphy,
-  matchesAuctionFilters,
-  vehicleClearlyMentionsCalligraphy,
-} from "@/lib/filter";
+import { runAuctionCheck } from "@/lib/check-auctions";
 import { fetchCopartVehicles } from "@/lib/providers/copart";
 import { fetchIaaiVehicles } from "@/lib/providers/iaai";
-import { decodeVinValues } from "@/lib/vin";
-import { enrichVehicleImage } from "@/lib/listing-image";
-import {
-  getAuctionFilters,
-  getStats,
-  isSeen,
-  markSeen,
-  saveLastCheck,
-  upsertRecentVehicle,
-} from "@/lib/storage";
-import { sendTelegramAlert } from "@/lib/telegram";
-import type {
-  AuctionSource,
-  AuctionVehicle,
-  CronCheckSummary,
-  SourceCheckSummary,
-} from "@/lib/types";
+import type { AuctionSource, AuctionVehicle } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -51,14 +31,6 @@ async function handleCheck(request: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const checkedAt = new Date().toISOString();
-  const sourceSummaries: SourceCheckSummary[] = [];
-  let totalFound = 0;
-  let newFound = 0;
-
-  const [stats, filters] = await Promise.all([getStats(), getAuctionFilters()]);
-  const isFirstRun = stats.seenCount === 0;
-
   const sources: Array<{
     source: AuctionSource;
     enabled: boolean;
@@ -76,76 +48,7 @@ async function handleCheck(request: Request) {
     },
   ];
 
-  for (const sourceConfig of sources) {
-    if (!sourceConfig.enabled) {
-      sourceSummaries.push({
-        source: sourceConfig.source,
-        enabled: false,
-        ok: true,
-        found: 0,
-        matched: 0,
-        newFound: 0,
-      });
-      continue;
-    }
-
-    try {
-      const vehicles = await sourceConfig.fetchVehicles();
-      const matches = await filterMatchesWithOptionalVinDecode(vehicles, env);
-      const enrichedMatches = (
-        await mapWithConcurrency(matches, 8, enrichVehicleImage)
-      ).filter((vehicle) => matchesAuctionFilters(vehicle, filters));
-      const unseen: AuctionVehicle[] = [];
-
-      for (const vehicle of enrichedMatches) {
-        if (!(await isSeen(vehicle.id))) {
-          unseen.push(vehicle);
-        } else {
-          await upsertRecentVehicle(vehicle);
-        }
-      }
-
-      const shouldNotify = !isFirstRun || env.FIRST_RUN_NOTIFY;
-      for (const vehicle of unseen) {
-        if (shouldNotify) {
-          await sendTelegramAlert(vehicle, env);
-          newFound += 1;
-        }
-
-        await markSeen(vehicle);
-      }
-
-      totalFound += enrichedMatches.length;
-      sourceSummaries.push({
-        source: sourceConfig.source,
-        enabled: true,
-        ok: true,
-        found: vehicles.length,
-        matched: enrichedMatches.length,
-        newFound: shouldNotify ? unseen.length : 0,
-      });
-    } catch (error) {
-      sourceSummaries.push({
-        source: sourceConfig.source,
-        enabled: true,
-        ok: false,
-        found: 0,
-        matched: 0,
-        newFound: 0,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  const summary: CronCheckSummary = {
-    ok: sourceSummaries.every((source) => source.ok),
-    checkedAt,
-    totalFound,
-    newFound,
-    sources: sourceSummaries,
-  };
-
-  await saveLastCheck(summary);
+  const summary = await runAuctionCheck({ env, sources });
   return NextResponse.json(summary);
 }
 
@@ -177,53 +80,4 @@ async function getBodySecret(request: Request): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-async function filterMatchesWithOptionalVinDecode(
-  vehicles: AuctionVehicle[],
-  env: AppEnv,
-): Promise<AuctionVehicle[]> {
-  const matches: AuctionVehicle[] = [];
-
-  for (const vehicle of vehicles) {
-    let decodedTrim: string | undefined;
-
-    if (vehicle.vin && !vehicleClearlyMentionsCalligraphy(vehicle)) {
-      try {
-        const decoded = await decodeVinValues(vehicle.vin);
-        decodedTrim = [decoded?.trim, decoded?.series].filter(Boolean).join(" ");
-      } catch {
-        decodedTrim = undefined;
-      }
-    }
-
-    if (matchesSantaFeCalligraphy(vehicle, { minYear: env.MIN_YEAR, decodedTrim })) {
-      matches.push(vehicle);
-    }
-  }
-
-  return matches;
-}
-
-async function mapWithConcurrency<T, TResult>(
-  items: T[],
-  concurrency: number,
-  mapper: (item: T) => Promise<TResult>,
-): Promise<TResult[]> {
-  const results = new Array<TResult>(items.length);
-  let nextIndex = 0;
-
-  async function worker() {
-    while (nextIndex < items.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      results[index] = await mapper(items[index]);
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
-  );
-
-  return results;
 }
