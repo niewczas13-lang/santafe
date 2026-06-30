@@ -151,4 +151,50 @@ describe("matchesAuctionFilters", () => {
       ),
     ).toBe(true);
   });
+
+  it("filters vehicles with auction dates outside the configured range", () => {
+    const filters = {
+      exteriorColor: "",
+      interiorColor: "",
+      excludedInteriorColor: "",
+      engine: "",
+      maxEngineLiters: undefined,
+      requireCalligraphy: true,
+      runStatuses: [],
+      auctionDateFrom: "2026-07-01",
+      auctionDateTo: "2026-07-31",
+    };
+
+    expect(
+      matchesAuctionFilters(
+        { ...calligraphyVehicle, saleDate: "2026-07-15T12:00:00Z" },
+        filters,
+      ),
+    ).toBe(true);
+    expect(
+      matchesAuctionFilters(
+        { ...calligraphyVehicle, saleDate: "2026-08-01T12:00:00Z" },
+        filters,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps vehicles without auction dates so they can be reviewed separately", () => {
+    expect(
+      matchesAuctionFilters(
+        { ...calligraphyVehicle, saleDate: undefined },
+        {
+          exteriorColor: "",
+          interiorColor: "",
+          excludedInteriorColor: "",
+          engine: "",
+          maxEngineLiters: undefined,
+          requireCalligraphy: true,
+          runStatuses: [],
+          auctionDateFrom: "2026-07-01",
+          auctionDateTo: "2026-07-31",
+        },
+      ),
+    ).toBe(true);
+  });
 });

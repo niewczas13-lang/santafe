@@ -12,7 +12,7 @@ export function buildIaaiImageUrlFromDetailUrl(
     return undefined;
   }
 
-  return `https://vis.iaai.com/resizer?imageKeys=${match[1]}~SID&width=640&height=480`;
+  return `https://vis.iaai.com/resizer?imageKeys=${match[1]}~SID~I1&width=640&height=480`;
 }
 
 export function getVehicleImageUrl(vehicle: AuctionVehicle): string | undefined {

@@ -1,4 +1,5 @@
 import type { AuctionFilters, VehicleRunStatus } from "./types";
+import { normalizeDateFilter } from "./auction-date";
 
 export const ALL_RUN_STATUSES: VehicleRunStatus[] = [
   "run_and_drive",
@@ -12,6 +13,8 @@ export const DEFAULT_AUCTION_FILTERS: AuctionFilters = {
   interiorColor: "",
   excludedInteriorColor: "black",
   engine: "hybrid",
+  auctionDateFrom: "",
+  auctionDateTo: "",
   maxEngineLiters: 2,
   requireCalligraphy: true,
   runStatuses: ALL_RUN_STATUSES,
@@ -33,6 +36,8 @@ export function normalizeAuctionFilters(input: unknown): AuctionFilters {
       cleanString(input.excludedInteriorColor) ||
       DEFAULT_AUCTION_FILTERS.excludedInteriorColor,
     engine: cleanString(input.engine),
+    auctionDateFrom: normalizeDateFilter(input.auctionDateFrom),
+    auctionDateTo: normalizeDateFilter(input.auctionDateTo),
     maxEngineLiters: cleanPositiveNumber(input.maxEngineLiters),
     requireCalligraphy: true,
     runStatuses:

@@ -1,8 +1,20 @@
 import { getEnvValidationMessage, loadEnv } from "@/lib/env";
 import { DashboardControls } from "./dashboard-controls";
+import {
+  buildDashboardSections,
+  selectDashboardVehicles,
+  type DashboardSections,
+} from "@/lib/dashboard-list";
+import { parseAuctionDate } from "@/lib/auction-date";
 import { getVehicleImageUrl } from "@/lib/image-url";
-import { getAuctionFilters, getRecent, getStats } from "@/lib/storage";
+import {
+  getAuctionFilters,
+  getRecent,
+  getStats,
+  getWatchedIds,
+} from "@/lib/storage";
 import type { AuctionFilters, AuctionVehicle, DashboardStats } from "@/lib/types";
+import { WatchButton } from "./watch-button";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +25,7 @@ export default async function DashboardPage() {
     return <ConfigurationError message={state.error} />;
   }
 
-  const { stats, recent, filters } = state;
+  const { stats, sections, filters, totalVisible } = state;
 
   return (
     <main className="min-h-[100dvh] px-4 py-8 text-[#20231d] sm:px-6 lg:px-10">
@@ -54,26 +66,40 @@ export default async function DashboardPage() {
           <div className="border-b border-[#d9dfd2] px-5 py-4 sm:px-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight">
-                  Recent matches
-                </h2>
+                <h2 className="text-lg font-semibold tracking-tight">Auction board</h2>
                 <p className="mt-1 text-sm text-[#667161]">
-                  All stored matched vehicles, newest first.
+                  Sorted by watched status and auction date.
                 </p>
               </div>
               <span className="rounded-full border border-[#d9dfd2] bg-[#eef2ea] px-3 py-1 text-sm font-medium text-[#2f6f52]">
-                {recent.length} stored
+                {totalVisible} stored
               </span>
             </div>
           </div>
 
-          {recent.length === 0 ? (
+          {totalVisible === 0 ? (
             <EmptyState />
           ) : (
-            <div className="divide-y divide-[#e3e8dc]">
-              {recent.map((vehicle) => (
-                <VehicleRow key={vehicle.id} vehicle={vehicle} />
-              ))}
+            <div>
+              <VehicleSection
+                title="Obserwowane"
+                description="Auta oznaczone gwiazdką."
+                vehicles={sections.watched}
+                watchedIds={new Set(sections.watched.map((vehicle) => vehicle.id))}
+                hideWhenEmpty
+              />
+              <VehicleSection
+                title="Aukcje z datą"
+                description="Najbliższe terminy aukcji są najwyżej."
+                vehicles={sections.scheduled}
+                watchedIds={new Set()}
+              />
+              <VehicleSection
+                title="Bez daty aukcji"
+                description="Warto obserwować, bo termin może dojść później."
+                vehicles={sections.unscheduled}
+                watchedIds={new Set()}
+              />
             </div>
           )}
         </section>
@@ -86,20 +112,30 @@ async function loadDashboardState(): Promise<
   | {
       ok: true;
       stats: DashboardStats;
-      recent: AuctionVehicle[];
+      sections: DashboardSections;
+      totalVisible: number;
       filters: AuctionFilters;
     }
   | { ok: false; error: string }
 > {
   try {
     loadEnv();
-    const [stats, recent, filters] = await Promise.all([
+    const [stats, recent, filters, watchedIds] = await Promise.all([
       getStats(),
       getRecent(),
       getAuctionFilters(),
+      getWatchedIds(),
     ]);
+    const visibleRecent = selectDashboardVehicles(recent, watchedIds, filters);
+    const sections = buildDashboardSections(visibleRecent, watchedIds);
 
-    return { ok: true, stats, recent, filters };
+    return {
+      ok: true,
+      stats,
+      sections,
+      totalVisible: visibleRecent.length,
+      filters,
+    };
   } catch (error) {
     return { ok: false, error: getEnvValidationMessage(error) };
   }
@@ -132,7 +168,60 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function VehicleRow({ vehicle }: { vehicle: AuctionVehicle }) {
+function VehicleSection({
+  title,
+  description,
+  vehicles,
+  watchedIds,
+  hideWhenEmpty = false,
+}: {
+  title: string;
+  description: string;
+  vehicles: AuctionVehicle[];
+  watchedIds: Set<string>;
+  hideWhenEmpty?: boolean;
+}) {
+  if (hideWhenEmpty && vehicles.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="border-b border-[#e3e8dc] last:border-b-0">
+      <div className="flex flex-wrap items-end justify-between gap-2 bg-[#fbfcfa] px-5 py-3 sm:px-6">
+        <div>
+          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <p className="mt-1 text-xs leading-5 text-[#667161]">{description}</p>
+        </div>
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667161]">
+          {vehicles.length}
+        </span>
+      </div>
+      {vehicles.length === 0 ? (
+        <p className="px-5 py-5 text-sm text-[#667161] sm:px-6">
+          Brak aut w tej sekcji.
+        </p>
+      ) : (
+        <div className="divide-y divide-[#e3e8dc]">
+          {vehicles.map((vehicle) => (
+            <VehicleRow
+              key={vehicle.id}
+              vehicle={vehicle}
+              isWatched={watchedIds.has(vehicle.id)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function VehicleRow({
+  vehicle,
+  isWatched,
+}: {
+  vehicle: AuctionVehicle;
+  isWatched: boolean;
+}) {
   const imageUrl = getVehicleImageUrl(vehicle);
 
   return (
@@ -174,17 +263,21 @@ function VehicleRow({ vehicle }: { vehicle: AuctionVehicle }) {
           <DetailPill label="Wnętrze" value={vehicle.interiorColor} />
           <DetailPill label="Silnik" value={vehicle.engine} />
           <DetailPill label="Status" value={formatRunStatus(vehicle.runStatus)} />
+          <DetailPill label="Aukcja" value={formatAuctionDate(vehicle.saleDate)} />
         </div>
       </div>
 
-      <a
-        href={vehicle.url}
-        target="_blank"
-        rel="noreferrer"
-        className="self-center rounded-md bg-[#2f6f52] px-4 py-2 text-sm font-semibold text-white transition-transform active:translate-y-[1px]"
-      >
-        Open
-      </a>
+      <div className="flex items-center gap-2 self-center sm:flex-col sm:items-end">
+        <WatchButton vehicleId={vehicle.id} initialWatched={isWatched} />
+        <a
+          href={vehicle.url}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-md bg-[#2f6f52] px-4 py-2 text-sm font-semibold text-white transition-transform active:translate-y-[1px]"
+        >
+          Open
+        </a>
+      </div>
     </article>
   );
 }
@@ -231,6 +324,18 @@ function formatRunStatus(value: AuctionVehicle["runStatus"]): string | undefined
   }
 
   return undefined;
+}
+
+function formatAuctionDate(value: string | undefined): string | undefined {
+  const date = parseAuctionDate(value);
+  if (!date) {
+    return undefined;
+  }
+
+  return new Intl.DateTimeFormat("pl-PL", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function formatDate(value: string | undefined): string {

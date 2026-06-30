@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { getRecent, upsertRecentVehicle } from "../lib/storage";
+import {
+  getRecent,
+  getWatchedIds,
+  setWatchedVehicle,
+  upsertRecentVehicle,
+} from "../lib/storage";
 import type { AuctionVehicle } from "../lib/types";
 
 class MemoryRedis {
   items: Array<string | AuctionVehicle> = [];
+  watched = new Set<string>();
 
   async lrange(_key: string, start: number, end: number) {
     return this.items.slice(start, end + 1);
@@ -15,6 +21,18 @@ class MemoryRedis {
 
   async rpush(_key: string, ...items: string[]) {
     this.items.push(...items);
+  }
+
+  async smembers() {
+    return [...this.watched];
+  }
+
+  async sadd(_key: string, id: string) {
+    this.watched.add(id);
+  }
+
+  async srem(_key: string, id: string) {
+    this.watched.delete(id);
   }
 }
 
@@ -31,6 +49,18 @@ describe("recent auction storage", () => {
     expect(recent).toHaveLength(220);
     expect(recent[0]?.id).toBe("iaai:stock:219");
     expect(recent.at(-1)?.id).toBe("iaai:stock:0");
+  });
+
+  it("stores watched vehicle IDs separately from recent listings", async () => {
+    const redis = new MemoryRedis();
+
+    await setWatchedVehicle("iaai:stock:44208863", true, redis as never);
+    expect(await getWatchedIds(redis as never)).toEqual(
+      new Set(["iaai:stock:44208863"]),
+    );
+
+    await setWatchedVehicle("iaai:stock:44208863", false, redis as never);
+    expect(await getWatchedIds(redis as never)).toEqual(new Set());
   });
 });
 

@@ -64,6 +64,7 @@ describe("normalizeVehicle", () => {
       "Interior Color": "Gray",
       Engine: "1.6L Hybrid",
       "Run & Drive": "Starts",
+      "Auction Date": "2026-08-03T12:00:00Z",
       images: ["https://vis.iaai.com/example-front.jpg"],
     });
 
@@ -81,6 +82,7 @@ describe("normalizeVehicle", () => {
       interiorColor: "Gray",
       engine: "1.6L Hybrid",
       runStatus: "starts",
+      saleDate: "2026-08-03T12:00:00Z",
       imageUrl: "https://vis.iaai.com/example-front.jpg",
     });
   });
@@ -112,7 +114,7 @@ describe("normalizeVehicle", () => {
     });
 
     expect(vehicle?.imageUrl).toBe(
-      "https://vis.iaai.com/resizer?imageKeys=44704880~SID&width=640&height=480",
+      "https://vis.iaai.com/resizer?imageKeys=44704880~SID~I1&width=640&height=480",
     );
   });
 

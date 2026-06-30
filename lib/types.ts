@@ -37,6 +37,8 @@ export type AuctionFilters = {
   interiorColor?: string;
   excludedInteriorColor?: string;
   engine?: string;
+  auctionDateFrom?: string;
+  auctionDateTo?: string;
   maxEngineLiters?: number;
   requireCalligraphy: boolean;
   runStatuses: VehicleRunStatus[];

@@ -1,4 +1,5 @@
 import type { AuctionFilters, AuctionVehicle } from "./types";
+import { isAuctionDateInRange } from "./auction-date";
 
 type MatchOptions = {
   minYear: number;
@@ -73,6 +74,16 @@ export function matchesAuctionFilters(
   }
 
   if (!matchesMaxEngineLiters(vehicle, filters.maxEngineLiters)) {
+    return false;
+  }
+
+  if (
+    !isAuctionDateInRange(
+      vehicle,
+      filters.auctionDateFrom,
+      filters.auctionDateTo,
+    )
+  ) {
     return false;
   }
 

@@ -175,6 +175,31 @@ export function DashboardControls({
           />
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label="Aukcja od"
+            type="date"
+            value={filters.auctionDateFrom ?? ""}
+            onChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                auctionDateFrom: value,
+              }))
+            }
+          />
+          <Field
+            label="Aukcja do"
+            type="date"
+            value={filters.auctionDateTo ?? ""}
+            onChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                auctionDateTo: value,
+              }))
+            }
+          />
+        </div>
+
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667161]">
             Status auta
@@ -256,7 +281,7 @@ function Field({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: "text" | "password";
+  type?: "text" | "password" | "date";
 }) {
   return (
     <label className="grid gap-2">

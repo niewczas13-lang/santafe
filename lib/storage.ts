@@ -15,6 +15,7 @@ export const SEEN_KEY = "auction-alerts:seen";
 export const RECENT_KEY = "auction-alerts:recent";
 export const LAST_CHECK_KEY = "auction-alerts:last-check";
 export const FILTERS_KEY = "auction-alerts:filters";
+export const WATCHED_KEY = "auction-alerts:watched";
 export const RECENT_HISTORY_LIMIT = 500;
 
 let redisSingleton: Redis | null = null;
@@ -113,4 +114,24 @@ export async function saveAuctionFilters(
   const normalized = normalizeAuctionFilters(filters);
   await redis.set(FILTERS_KEY, normalized);
   return normalized;
+}
+
+export async function getWatchedIds(redis = getRedis()): Promise<Set<string>> {
+  const ids = (await redis.smembers(WATCHED_KEY)) as unknown[];
+  return new Set(
+    ids.filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+}
+
+export async function setWatchedVehicle(
+  id: string,
+  watched: boolean,
+  redis = getRedis(),
+): Promise<void> {
+  if (watched) {
+    await redis.sadd(WATCHED_KEY, id);
+    return;
+  }
+
+  await redis.srem(WATCHED_KEY, id);
 }
