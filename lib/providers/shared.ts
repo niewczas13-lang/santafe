@@ -9,6 +9,7 @@ const DEFAULT_COPART_SEARCH_URL =
   "https://www.copart.com/lotSearchResults/?free=true&query=hyundai%20santa%20fe%20calligraphy";
 const DEFAULT_IAAI_SEARCH_URL =
   "https://www.iaai.com/Search?Keyword=hyundai%20santa%20fe%20calligraphy";
+export const IAAI_DETAIL_ACTOR_ID = "lulzasaur/iaa-scraper";
 
 export type ProviderContext = {
   env: AppEnv;
@@ -240,7 +241,7 @@ export async function fetchVehiclesFromUrls(
     const body = await response.text();
     const items = contentType.includes("application/json")
       ? collectVehicleCandidates(JSON.parse(body))
-      : collectVehicleCandidatesFromHtml(body);
+      : collectVehicleCandidatesFromHtml(body, url);
 
     for (const item of items) {
       const vehicle = normalizeVehicle(source, item, url);
@@ -270,8 +271,11 @@ export function buildCopartActorInput(env: AppEnv) {
   };
 }
 
-export function buildIaaiActorInput(env: AppEnv) {
-  if (env.APIFY_IAAI_ACTOR_ID === "lulzasaur/iaa-scraper") {
+export function buildIaaiActorInput(
+  env: AppEnv,
+  actorId = env.APIFY_IAAI_ACTOR_ID,
+) {
+  if (actorId === IAAI_DETAIL_ACTOR_ID) {
     return {
       keyword: "hyundai santa fe calligraphy",
       maxResults: env.MAX_RESULTS_PER_SOURCE,
@@ -280,12 +284,15 @@ export function buildIaaiActorInput(env: AppEnv) {
   }
 
   return {
-    urls:
-      env.IAAI_SEARCH_URLS.length > 0
-        ? env.IAAI_SEARCH_URLS
-        : [DEFAULT_IAAI_SEARCH_URL],
+    urls: buildIaaiSearchUrls(env),
     maxitems: env.MAX_RESULTS_PER_SOURCE,
   };
+}
+
+export function buildIaaiSearchUrls(env: AppEnv): string[] {
+  return env.IAAI_SEARCH_URLS.length > 0
+    ? env.IAAI_SEARCH_URLS
+    : [DEFAULT_IAAI_SEARCH_URL];
 }
 
 export function takeMax<T>(items: T[], max: number): T[] {
@@ -461,7 +468,7 @@ function yearFromTitle(title: string): number | undefined {
   return match ? Number.parseInt(match[1], 10) : undefined;
 }
 
-function collectVehicleCandidatesFromHtml(html: string): unknown[] {
+function collectVehicleCandidatesFromHtml(html: string, pageUrl: string): unknown[] {
   const $ = cheerio.load(html);
   const candidates: unknown[] = [];
 
@@ -480,7 +487,77 @@ function collectVehicleCandidatesFromHtml(html: string): unknown[] {
     },
   );
 
+  candidates.push(...collectIaaiVehicleCandidatesFromHtml($, pageUrl));
+
   return candidates;
+}
+
+function collectIaaiVehicleCandidatesFromHtml(
+  $: cheerio.CheerioAPI,
+  pageUrl: string,
+): unknown[] {
+  const byUrl = new Map<string, UnknownRecord>();
+
+  $("a[href*='/VehicleDetail/']").each((_index, element) => {
+    const anchor = $(element);
+    const href = anchor.attr("href");
+    const url = resolveUrl(href, pageUrl);
+
+    if (!url) {
+      return;
+    }
+
+    const candidate = byUrl.get(url) ?? { url };
+    const stockNumber =
+      extractIaaiStockNumber(anchor.attr("name")) ??
+      extractIaaiStockNumber(anchor.attr("id")) ??
+      extractIaaiStockNumber(href);
+    const title = normalizeHtmlText(anchor.text());
+
+    if (stockNumber) {
+      candidate.stockNumber = stockNumber;
+    }
+
+    if (title && looksLikeVehicleTitle(title)) {
+      candidate.title = title;
+    }
+
+    const imageUrl = buildIaaiImageUrlFromDetailUrl(url);
+    if (imageUrl) {
+      candidate.imageUrl = imageUrl;
+    }
+
+    byUrl.set(url, candidate);
+  });
+
+  return [...byUrl.values()].filter((candidate) =>
+    Boolean(pickString(candidate, ["title"])),
+  );
+}
+
+function resolveUrl(candidate: string | undefined, pageUrl: string): string | undefined {
+  if (!candidate?.trim()) {
+    return undefined;
+  }
+
+  try {
+    return new URL(candidate.trim(), pageUrl).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function extractIaaiStockNumber(value: string | undefined): string | undefined {
+  const match = value?.match(/\d{5,}/);
+  return match?.[0];
+}
+
+function normalizeHtmlText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function looksLikeVehicleTitle(value: string): boolean {
+  return /\b(19|20)\d{2}\b/.test(value) || /hyundai|santa|calligraphy/i.test(value);
 }
 
 function collectVehicleCandidates(input: unknown): unknown[] {

@@ -91,13 +91,9 @@ async function handleCheck(request: Request) {
 
     try {
       const vehicles = await sourceConfig.fetchVehicles();
-      const matches = await filterMatchesWithOptionalVinDecode(
-        vehicles,
-        env,
-        filters,
-      );
+      const matches = await filterMatchesWithOptionalVinDecode(vehicles, env);
       const enrichedMatches = (
-        await Promise.all(matches.map(enrichVehicleImage))
+        await mapWithConcurrency(matches, 8, enrichVehicleImage)
       ).filter((vehicle) => matchesAuctionFilters(vehicle, filters));
       const unseen: AuctionVehicle[] = [];
 
@@ -186,7 +182,6 @@ async function getBodySecret(request: Request): Promise<string | null> {
 async function filterMatchesWithOptionalVinDecode(
   vehicles: AuctionVehicle[],
   env: AppEnv,
-  filters: import("@/lib/types").AuctionFilters,
 ): Promise<AuctionVehicle[]> {
   const matches: AuctionVehicle[] = [];
 
@@ -202,13 +197,33 @@ async function filterMatchesWithOptionalVinDecode(
       }
     }
 
-    if (
-      matchesSantaFeCalligraphy(vehicle, { minYear: env.MIN_YEAR, decodedTrim }) &&
-      matchesAuctionFilters(vehicle, filters)
-    ) {
+    if (matchesSantaFeCalligraphy(vehicle, { minYear: env.MIN_YEAR, decodedTrim })) {
       matches.push(vehicle);
     }
   }
 
   return matches;
+}
+
+async function mapWithConcurrency<T, TResult>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results = new Array<TResult>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+
+  return results;
 }

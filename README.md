@@ -71,7 +71,7 @@ Use Apify by setting `APIFY_TOKEN`. If you do not set actor IDs, the app uses:
 
 You can override either actor through `APIFY_COPART_ACTOR_ID` or `APIFY_IAAI_ACTOR_ID`.
 
-IAAI thumbnails are derived from the `VehicleDetail` salvage ID when the actor does not return image URLs. For richer IAAI fields such as start code/run status, you can override `APIFY_IAAI_ACTOR_ID` to a detail-capable actor such as `lulzasaur/iaa-scraper`; the app sends that actor `keyword`, `maxResults`, and `scrapeDetails`.
+IAAI thumbnails are derived from the `VehicleDetail` salvage ID when the actor does not return image URLs. If the configured IAAI actor returns no usable listings, the app also tries the default low-cost actor and then the detail-capable `lulzasaur/iaa-scraper` actor before falling back to saved-search HTML. The detail actor receives `keyword`, `maxResults`, and `scrapeDetails`.
 
 Without Apify, paste saved-search URLs into `COPART_SEARCH_URLS` and `IAAI_SEARCH_URLS`. Saved URLs should already contain your filters for Hyundai Santa Fe Calligraphy, 2024+, USA and Canada. Auction sites may block serverless fetches; in that case use Apify or adjust the saved-search source.
 
