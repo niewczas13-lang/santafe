@@ -103,4 +103,28 @@ describe("normalizeVehicle", () => {
       "https://vis.iaai.com/resizer?imageKeys=sample-key",
     );
   });
+
+  it("builds a fallback IAAI image URL from the vehicle detail URL", () => {
+    const vehicle = normalizeVehicle("iaai", {
+      title: "2026 HYUNDAI SANTA FE HYBRID CALLIGRAPHY",
+      detail_url: "https://www.iaai.com/VehicleDetail/44704880~US",
+      "Stock #": "44208863",
+    });
+
+    expect(vehicle?.imageUrl).toBe(
+      "https://vis.iaai.com/resizer?imageKeys=44704880~SID&width=640&height=480",
+    );
+  });
+
+  it("normalizes IAAI start code fields from detail-capable actors", () => {
+    const vehicle = normalizeVehicle("iaai", {
+      title: "2026 HYUNDAI SANTA FE HYBRID CALLIGRAPHY",
+      url: "https://www.iaai.com/VehicleDetail/44704880~US",
+      stockNumber: "44208863",
+      startCode: "Stationary",
+      imageUrl: "https://vis.iaai.com/example-front.jpg",
+    });
+
+    expect(vehicle?.runStatus).toBe("stationary");
+  });
 });

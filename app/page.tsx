@@ -1,5 +1,6 @@
 import { getEnvValidationMessage, loadEnv } from "@/lib/env";
 import { DashboardControls } from "./dashboard-controls";
+import { getVehicleImageUrl } from "@/lib/image-url";
 import { getAuctionFilters, getRecent, getStats } from "@/lib/storage";
 import type { AuctionFilters, AuctionVehicle, DashboardStats } from "@/lib/types";
 
@@ -132,13 +133,15 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function VehicleRow({ vehicle }: { vehicle: AuctionVehicle }) {
+  const imageUrl = getVehicleImageUrl(vehicle);
+
   return (
     <article className="grid gap-4 px-5 py-4 transition-colors hover:bg-[#f7f8f5] sm:grid-cols-[8rem_1fr_auto] sm:px-6">
       <div className="h-24 overflow-hidden rounded-md border border-[#d9dfd2] bg-[#eef2ea]">
-        {vehicle.imageUrl ? (
+        {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={vehicle.imageUrl}
+            src={imageUrl}
             alt={vehicle.title}
             className="h-full w-full object-cover"
           />

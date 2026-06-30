@@ -61,4 +61,17 @@ describe("provider actor input builders", () => {
       ],
     });
   });
+
+  it("builds detail-capable IAAI actor input when that actor is configured", () => {
+    const env = loadEnv({
+      ...requiredEnv,
+      APIFY_IAAI_ACTOR_ID: "lulzasaur/iaa-scraper",
+    });
+
+    expect(buildIaaiActorInput(env)).toEqual({
+      keyword: "hyundai santa fe calligraphy",
+      maxResults: 200,
+      scrapeDetails: true,
+    });
+  });
 });

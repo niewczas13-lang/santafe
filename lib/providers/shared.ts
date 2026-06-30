@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import type { AppEnv } from "../env";
+import { buildIaaiImageUrlFromDetailUrl } from "../image-url";
 import type { AuctionSource, AuctionVehicle, VehicleRunStatus } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
@@ -107,8 +108,15 @@ export function normalizeVehicle(
       pickString(item, [
         "runStatus",
         "run_status",
+        "startCode",
+        "Start Code",
+        "StartCode",
+        "startsDesc",
+        "StartsDesc",
         "vehicle_condition",
         "Vehicle Condition",
+        "RunAndDrive",
+        "runAndDrive",
         "Run & Drive",
         "starts",
         "Starts",
@@ -187,6 +195,7 @@ export function normalizeRunStatus(value: string | undefined): VehicleRunStatus 
 
   if (
     normalized.includes("run and drive") ||
+    normalized.includes("runanddrive") ||
     normalized.includes("run drive") ||
     normalized.includes("runs and drives") ||
     normalized.includes("drives")
@@ -257,6 +266,14 @@ export function buildCopartActorInput(env: AppEnv) {
 }
 
 export function buildIaaiActorInput(env: AppEnv) {
+  if (env.APIFY_IAAI_ACTOR_ID === "lulzasaur/iaa-scraper") {
+    return {
+      keyword: "hyundai santa fe calligraphy",
+      maxResults: env.MAX_RESULTS_PER_SOURCE,
+      scrapeDetails: true,
+    };
+  }
+
   return {
     urls:
       env.IAAI_SEARCH_URLS.length > 0
@@ -333,6 +350,20 @@ function pickImageUrl(item: UnknownRecord): string | undefined {
   const recursive = findNestedImageUrl(item);
   if (recursive) {
     return recursive;
+  }
+
+  const iaaiFallback = buildIaaiImageUrlFromDetailUrl(
+    pickString(item, [
+      "url",
+      "link",
+      "href",
+      "detailUrl",
+      "detail_url",
+      "Detail URL",
+    ]),
+  );
+  if (iaaiFallback) {
+    return iaaiFallback;
   }
 
   return undefined;
