@@ -43,6 +43,21 @@ const integerEnv = (defaultValue: number) =>
     }, z.number().int().positive())
     .default(defaultValue);
 
+const nonnegativeIntegerEnv = (defaultValue: number) =>
+  z
+    .preprocess((value) => {
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value !== "string" || value.trim() === "") {
+        return defaultValue;
+      }
+
+      return Number.parseInt(value, 10);
+    }, z.number().int().nonnegative())
+    .default(defaultValue);
+
 const csvEnv = z.preprocess((value) => {
   if (Array.isArray(value)) {
     return value;
@@ -74,6 +89,8 @@ const rawEnvSchema = z.object({
   APIFY_IAAI_ACTOR_ID: optionalString,
   FIRST_RUN_NOTIFY: booleanEnv(false),
   MAX_RESULTS_PER_SOURCE: integerEnv(200),
+  COPART_DETAIL_PAGE_LIMIT: nonnegativeIntegerEnv(8),
+  COPART_DETAIL_DELAY_MS: nonnegativeIntegerEnv(2500),
   ENABLE_DEBUG_ROUTES: booleanEnv(false),
 });
 

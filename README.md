@@ -114,6 +114,13 @@ npm run schedule:listener
 
 The scheduled commands write logs to `.local-logs/`. Copart currently needs a normal local Chromium window, so scheduled `check:local` and dashboard-triggered manual checks run headed by default. Set `LOCAL_LISTENER_HEADLESS=true` only if you want manual dashboard checks to run without a visible browser window; IAAI works headless, but Copart may return no listings in that mode.
 
+Copart is conservative locally: it only opens likely Calligraphy detail pages, one at a time. Tune this if Copart shows bot checks:
+
+```env
+COPART_DETAIL_PAGE_LIMIT=8
+COPART_DETAIL_DELAY_MS=2500
+```
+
 ## Dashboard Filters
 
 The dashboard lets you save practical filters in Redis without redeploying:

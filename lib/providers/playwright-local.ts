@@ -1,5 +1,6 @@
 import type { Browser, Page } from "playwright";
 import type { AppEnv } from "../env";
+import { matchesSantaFeCalligraphy } from "../filter";
 import {
   extractListingDetailsFromHtml,
   type ListingDetails,
@@ -18,6 +19,7 @@ const USER_AGENT =
 const SEARCH_TIMEOUT_MS = 60_000;
 const DETAIL_TIMEOUT_MS = 45_000;
 const DETAIL_CONCURRENCY = 4;
+const COPART_DETAIL_CONCURRENCY = 1;
 
 type LocalPlaywrightContext = ProviderContext & {
   browser: Browser;
@@ -28,6 +30,12 @@ type FetchRenderedVehiclesOptions = {
   env: AppEnv;
   source: AuctionSource;
   urls: string[];
+};
+
+type LocalDetailPolicy = {
+  concurrency: number;
+  delayMs: number;
+  limit: number;
 };
 
 export async function fetchLocalCopartVehicles({
@@ -108,35 +116,92 @@ async function fetchRenderedVehicles({
 
   return enrichVehiclesWithDetails(
     browser,
+    source,
     dedupeVehicles(vehicles).slice(0, env.MAX_RESULTS_PER_SOURCE),
+    env,
   );
 }
 
 async function enrichVehiclesWithDetails(
   browser: Browser,
+  source: AuctionSource,
   vehicles: AuctionVehicle[],
+  env: AppEnv,
 ): Promise<AuctionVehicle[]> {
-  return mapWithConcurrency(vehicles, DETAIL_CONCURRENCY, async (vehicle) => {
-    const page = await newPage(browser);
+  const policy = getLocalDetailPolicy(source, env);
+  const detailVehicles = selectDetailVehicles(source, vehicles, env).slice(
+    0,
+    policy.limit,
+  );
+  const enrichedVehicles = await mapWithConcurrency(
+    detailVehicles,
+    policy.concurrency,
+    async (vehicle, index) => {
+      if (policy.delayMs > 0 && index > 0) {
+        await sleep(policy.delayMs);
+      }
 
-    try {
-      await page.goto(vehicle.url, {
-        waitUntil: "domcontentloaded",
-        timeout: DETAIL_TIMEOUT_MS,
-      });
-      await waitForDetailPage(page, vehicle.source);
+      const page = await newPage(browser);
 
-      const html = await page.content();
-      return mergeVehicleDetails(
-        vehicle,
-        extractListingDetailsFromHtml(html, vehicle.url),
-      );
-    } catch {
-      return vehicle;
-    } finally {
-      await page.close();
-    }
-  });
+      try {
+        await page.goto(vehicle.url, {
+          waitUntil: "domcontentloaded",
+          timeout: DETAIL_TIMEOUT_MS,
+        });
+        await waitForDetailPage(page, vehicle.source);
+
+        const html = await page.content();
+        return mergeVehicleDetails(
+          vehicle,
+          extractListingDetailsFromHtml(html, vehicle.url),
+        );
+      } catch {
+        return vehicle;
+      } finally {
+        await page.close();
+      }
+    },
+  );
+  const enrichedById = new Map(
+    enrichedVehicles.map((vehicle) => [vehicle.id, vehicle]),
+  );
+
+  return vehicles.map((vehicle) => enrichedById.get(vehicle.id) ?? vehicle);
+}
+
+export function getLocalDetailPolicy(
+  source: AuctionSource,
+  env: Pick<AppEnv, "COPART_DETAIL_DELAY_MS" | "COPART_DETAIL_PAGE_LIMIT">,
+): LocalDetailPolicy {
+  if (source === "copart") {
+    return {
+      concurrency: COPART_DETAIL_CONCURRENCY,
+      delayMs: env.COPART_DETAIL_DELAY_MS,
+      limit: env.COPART_DETAIL_PAGE_LIMIT,
+    };
+  }
+
+  return {
+    concurrency: DETAIL_CONCURRENCY,
+    delayMs: 0,
+    limit: Number.POSITIVE_INFINITY,
+  };
+}
+
+export function selectDetailVehicles(
+  source: AuctionSource,
+  vehicles: AuctionVehicle[],
+  env: Pick<AppEnv, "COPART_DETAIL_PAGE_LIMIT" | "MIN_YEAR">,
+): AuctionVehicle[] {
+  if (source !== "copart") {
+    return vehicles;
+  }
+
+  return vehicles
+    .filter((vehicle) =>
+      matchesSantaFeCalligraphy(vehicle, { minYear: env.MIN_YEAR }),
+    )
+    .slice(0, env.COPART_DETAIL_PAGE_LIMIT);
 }
 
 async function newPage(browser: Browser): Promise<Page> {
@@ -188,6 +253,10 @@ async function scrollSearchResults(page: Page): Promise<void> {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function dedupeVehicles(vehicles: AuctionVehicle[]): AuctionVehicle[] {
   const byId = new Map<string, AuctionVehicle>();
 
@@ -201,7 +270,7 @@ function dedupeVehicles(vehicles: AuctionVehicle[]): AuctionVehicle[] {
 async function mapWithConcurrency<T, TResult>(
   items: T[],
   concurrency: number,
-  mapper: (item: T) => Promise<TResult>,
+  mapper: (item: T, index: number) => Promise<TResult>,
 ): Promise<TResult[]> {
   const results = new Array<TResult>(items.length);
   let nextIndex = 0;
@@ -210,7 +279,7 @@ async function mapWithConcurrency<T, TResult>(
     while (nextIndex < items.length) {
       const index = nextIndex;
       nextIndex += 1;
-      results[index] = await mapper(items[index]);
+      results[index] = await mapper(items[index], index);
     }
   }
 
