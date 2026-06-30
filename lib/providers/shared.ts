@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { AppEnv } from "../env";
-import type { AuctionSource, AuctionVehicle } from "../types";
+import type { AuctionSource, AuctionVehicle, VehicleRunStatus } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -78,6 +78,44 @@ export function normalizeVehicle(
     trim: pickString(item, ["trim", "series", "subModel", "vehicleTrim"]),
     title,
     odometer: pickOdometer(item),
+    exteriorColor: pickString(item, [
+      "exteriorColor",
+      "exterior_color",
+      "Exterior Color",
+      "color",
+      "Color",
+      "vehicleColor",
+    ]),
+    interiorColor: pickString(item, [
+      "interiorColor",
+      "interior_color",
+      "Interior Color",
+      "interior",
+      "Interior",
+    ]),
+    engine: pickString(item, [
+      "engine",
+      "Engine",
+      "engine_type",
+      "Engine Type",
+      "engineSize",
+      "engine_size",
+      "fuel",
+      "Fuel",
+    ]),
+    runStatus: normalizeRunStatus(
+      pickString(item, [
+        "runStatus",
+        "run_status",
+        "vehicle_condition",
+        "Vehicle Condition",
+        "Run & Drive",
+        "starts",
+        "Starts",
+        "condition",
+        "Condition",
+      ]),
+    ),
     damage: pickString(item, [
       "damage",
       "primaryDamage",
@@ -114,16 +152,49 @@ export function normalizeVehicle(
       "buyNow",
       "price",
     ]),
-    imageUrl: pickString(item, [
-      "imageUrl",
-      "image_url",
-      "image",
-      "thumbnail",
-      "photoUrl",
-    ]),
+    imageUrl: pickImageUrl(item),
     url,
     raw: item,
   };
+}
+
+export function normalizeRunStatus(value: string | undefined): VehicleRunStatus {
+  const normalized = String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "unknown";
+  }
+
+  if (
+    normalized.includes("run and drive") ||
+    normalized.includes("run drive") ||
+    normalized.includes("runs and drives") ||
+    normalized.includes("drives")
+  ) {
+    return "run_and_drive";
+  }
+
+  if (
+    normalized.includes("start") ||
+    normalized.includes("engine starts") ||
+    normalized.includes("starts")
+  ) {
+    return "starts";
+  }
+
+  if (
+    normalized.includes("does not start") ||
+    normalized.includes("non runner") ||
+    normalized.includes("not run") ||
+    normalized.includes("stationary")
+  ) {
+    return "stationary";
+  }
+
+  return "unknown";
 }
 
 export async function fetchVehiclesFromUrls(
@@ -243,6 +314,49 @@ function pickOdometer(item: UnknownRecord): string | undefined {
   }
 
   return unit ? `${value} ${unit}` : value;
+}
+
+function pickImageUrl(item: UnknownRecord): string | undefined {
+  const direct = pickString(item, [
+    "imageUrl",
+    "image_url",
+    "image",
+    "thumbnail",
+    "photoUrl",
+    "photo_url",
+  ]);
+
+  if (direct) {
+    return direct;
+  }
+
+  for (const key of ["images", "Images", "photos", "Photos", "lot_images"]) {
+    const value = item[key];
+
+    if (Array.isArray(value)) {
+      for (const candidate of value) {
+        if (typeof candidate === "string" && candidate.trim()) {
+          return candidate.trim();
+        }
+
+        if (isRecord(candidate)) {
+          const nested = pickString(candidate, [
+            "url",
+            "imageUrl",
+            "image_url",
+            "link",
+            "href",
+          ]);
+
+          if (nested) {
+            return nested;
+          }
+        }
+      }
+    }
+  }
+
+  return undefined;
 }
 
 function buildTitle(item: UnknownRecord): string {

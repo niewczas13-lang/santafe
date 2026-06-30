@@ -1,4 +1,4 @@
-import type { AuctionVehicle } from "./types";
+import type { AuctionFilters, AuctionVehicle } from "./types";
 
 type MatchOptions = {
   minYear: number;
@@ -35,10 +35,53 @@ export function vehicleText(
       vehicle.make,
       vehicle.model,
       vehicle.trim,
+      vehicle.exteriorColor,
+      vehicle.interiorColor,
+      vehicle.engine,
+      vehicle.runStatus,
       decodedTrim,
       rawText,
     ].join(" "),
   );
+}
+
+export function matchesAuctionFilters(
+  vehicle: AuctionVehicle,
+  filters: AuctionFilters,
+): boolean {
+  if (filters.requireCalligraphy && !vehicleText(vehicle).includes("calligraphy")) {
+    return false;
+  }
+
+  if (!matchesTextFilter(vehicle.exteriorColor, filters.exteriorColor)) {
+    return false;
+  }
+
+  if (!matchesTextFilter(vehicle.interiorColor, filters.interiorColor)) {
+    return false;
+  }
+
+  if (!matchesTextFilter(vehicle.engine, filters.engine)) {
+    return false;
+  }
+
+  if (
+    filters.runStatuses.length > 0 &&
+    !filters.runStatuses.includes(vehicle.runStatus ?? "unknown")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesTextFilter(value: string | undefined, filter: string | undefined) {
+  const normalizedFilter = normalizeAuctionText(filter);
+  if (!normalizedFilter) {
+    return true;
+  }
+
+  return normalizeAuctionText(value).includes(normalizedFilter);
 }
 
 export function extractVehicleYear(vehicle: AuctionVehicle): number | undefined {

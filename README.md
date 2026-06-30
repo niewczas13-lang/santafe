@@ -73,6 +73,18 @@ You can override either actor through `APIFY_COPART_ACTOR_ID` or `APIFY_IAAI_ACT
 
 Without Apify, paste saved-search URLs into `COPART_SEARCH_URLS` and `IAAI_SEARCH_URLS`. Saved URLs should already contain your filters for Hyundai Santa Fe Calligraphy, 2024+, USA and Canada. Auction sites may block serverless fetches; in that case use Apify or adjust the saved-search source.
 
+## Dashboard Filters
+
+The dashboard lets you save practical filters in Redis without redeploying:
+
+- exterior color
+- interior/upholstery color
+- engine text, for example `hybrid` or `2.5`
+- required Calligraphy trim
+- vehicle run status: runs and drives, starts, stationary, or no info
+
+Use **Sprawdź teraz** to save the current filters and run the auction check immediately. The secret is sent only with that request and is not stored by the app.
+
 ## Cron
 
 The included `vercel.json` runs once per day at 08:00 UTC:

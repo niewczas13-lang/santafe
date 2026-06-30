@@ -12,6 +12,10 @@ export type AuctionVehicle = {
   trim?: string;
   title: string;
   odometer?: string;
+  exteriorColor?: string;
+  interiorColor?: string;
+  engine?: string;
+  runStatus?: VehicleRunStatus;
   damage?: string;
   location?: string;
   saleDate?: string;
@@ -20,6 +24,20 @@ export type AuctionVehicle = {
   url: string;
   imageUrl?: string;
   raw?: unknown;
+};
+
+export type VehicleRunStatus =
+  | "run_and_drive"
+  | "starts"
+  | "stationary"
+  | "unknown";
+
+export type AuctionFilters = {
+  exteriorColor?: string;
+  interiorColor?: string;
+  engine?: string;
+  requireCalligraphy: boolean;
+  runStatuses: VehicleRunStatus[];
 };
 
 export type SourceCheckSummary = {

@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { getEnvValidationMessage, loadEnv, type AppEnv } from "@/lib/env";
 import {
   matchesSantaFeCalligraphy,
+  matchesAuctionFilters,
   vehicleClearlyMentionsCalligraphy,
 } from "@/lib/filter";
 import { fetchCopartVehicles } from "@/lib/providers/copart";
 import { fetchIaaiVehicles } from "@/lib/providers/iaai";
 import { decodeVinValues } from "@/lib/vin";
-import { getStats, isSeen, markSeen, saveLastCheck } from "@/lib/storage";
+import {
+  getAuctionFilters,
+  getStats,
+  isSeen,
+  markSeen,
+  saveLastCheck,
+} from "@/lib/storage";
 import { sendTelegramAlert } from "@/lib/telegram";
 import type {
   AuctionSource,
@@ -19,6 +26,14 @@ import type {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  return handleCheck(request);
+}
+
+export async function POST(request: Request) {
+  return handleCheck(request);
+}
+
+async function handleCheck(request: Request) {
   let env: AppEnv;
 
   try {
@@ -30,7 +45,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!isAuthorized(request, env.CRON_SECRET)) {
+  if (!(await isAuthorized(request, env.CRON_SECRET))) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
@@ -39,7 +54,7 @@ export async function GET(request: Request) {
   let totalFound = 0;
   let newFound = 0;
 
-  const stats = await getStats();
+  const [stats, filters] = await Promise.all([getStats(), getAuctionFilters()]);
   const isFirstRun = stats.seenCount === 0;
 
   const sources: Array<{
@@ -74,7 +89,11 @@ export async function GET(request: Request) {
 
     try {
       const vehicles = await sourceConfig.fetchVehicles();
-      const matches = await filterMatchesWithOptionalVinDecode(vehicles, env);
+      const matches = await filterMatchesWithOptionalVinDecode(
+        vehicles,
+        env,
+        filters,
+      );
       const unseen: AuctionVehicle[] = [];
 
       for (const vehicle of matches) {
@@ -127,18 +146,40 @@ export async function GET(request: Request) {
   return NextResponse.json(summary);
 }
 
-function isAuthorized(request: Request, cronSecret: string): boolean {
+async function isAuthorized(
+  request: Request,
+  cronSecret: string,
+): Promise<boolean> {
   const url = new URL(request.url);
   const querySecret = url.searchParams.get("secret");
   const authorization = request.headers.get("authorization");
   const bearerSecret = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const bodySecret = await getBodySecret(request);
 
-  return querySecret === cronSecret || bearerSecret === cronSecret;
+  return (
+    querySecret === cronSecret ||
+    bearerSecret === cronSecret ||
+    bodySecret === cronSecret
+  );
+}
+
+async function getBodySecret(request: Request): Promise<string | null> {
+  if (request.method === "GET") {
+    return null;
+  }
+
+  try {
+    const body = (await request.clone().json()) as { secret?: unknown };
+    return typeof body.secret === "string" ? body.secret : null;
+  } catch {
+    return null;
+  }
 }
 
 async function filterMatchesWithOptionalVinDecode(
   vehicles: AuctionVehicle[],
   env: AppEnv,
+  filters: import("@/lib/types").AuctionFilters,
 ): Promise<AuctionVehicle[]> {
   const matches: AuctionVehicle[] = [];
 
@@ -154,7 +195,10 @@ async function filterMatchesWithOptionalVinDecode(
       }
     }
 
-    if (matchesSantaFeCalligraphy(vehicle, { minYear: env.MIN_YEAR, decodedTrim })) {
+    if (
+      matchesSantaFeCalligraphy(vehicle, { minYear: env.MIN_YEAR, decodedTrim }) &&
+      matchesAuctionFilters(vehicle, filters)
+    ) {
       matches.push(vehicle);
     }
   }

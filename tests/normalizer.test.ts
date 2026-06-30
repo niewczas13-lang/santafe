@@ -21,6 +21,10 @@ describe("normalizeVehicle", () => {
       primary_damage: "FRONT END",
       odometer: 23870,
       odometer_unit: "MI",
+      color: "Hampton Gray",
+      interior_color: "Black",
+      engine: "2.5L I4",
+      vehicle_condition: "Run and Drive",
     });
 
     expect(vehicle).toMatchObject({
@@ -37,6 +41,10 @@ describe("normalizeVehicle", () => {
       location: "MI - DETROIT",
       damage: "FRONT END",
       odometer: "23870 MI",
+      exteriorColor: "Hampton Gray",
+      interiorColor: "Black",
+      engine: "2.5L I4",
+      runStatus: "run_and_drive",
       url: "https://www.copart.com/lot/99111625/2024-hyundai-santa-fe-calligraphy-mi-detroit",
       imageUrl: "https://cs.copart.com/example.jpg",
     });
@@ -52,6 +60,11 @@ describe("normalizeVehicle", () => {
       Odometer: "23,870 mi",
       Branch: "Long Island",
       ACV: "$32,800",
+      "Exterior Color": "Phantom Black Pearl",
+      "Interior Color": "Gray",
+      Engine: "1.6L Hybrid",
+      "Run & Drive": "Starts",
+      images: ["https://vis.iaai.com/example-front.jpg"],
     });
 
     expect(vehicle).toMatchObject({
@@ -64,6 +77,11 @@ describe("normalizeVehicle", () => {
       damage: "Front End",
       odometer: "23,870 mi",
       location: "Long Island",
+      exteriorColor: "Phantom Black Pearl",
+      interiorColor: "Gray",
+      engine: "1.6L Hybrid",
+      runStatus: "starts",
+      imageUrl: "https://vis.iaai.com/example-front.jpg",
     });
   });
 });

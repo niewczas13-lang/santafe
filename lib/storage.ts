@@ -1,10 +1,20 @@
 import { Redis } from "@upstash/redis";
 import { loadEnv, type AppEnv } from "./env";
-import type { AuctionVehicle, CronCheckSummary, DashboardStats } from "./types";
+import {
+  DEFAULT_AUCTION_FILTERS,
+  normalizeAuctionFilters,
+} from "./filter-settings";
+import type {
+  AuctionFilters,
+  AuctionVehicle,
+  CronCheckSummary,
+  DashboardStats,
+} from "./types";
 
 export const SEEN_KEY = "auction-alerts:seen";
 export const RECENT_KEY = "auction-alerts:recent";
 export const LAST_CHECK_KEY = "auction-alerts:last-check";
+export const FILTERS_KEY = "auction-alerts:filters";
 
 let redisSingleton: Redis | null = null;
 
@@ -67,4 +77,20 @@ export async function saveLastCheck(
   redis = getRedis(),
 ): Promise<void> {
   await redis.set(LAST_CHECK_KEY, summary);
+}
+
+export async function getAuctionFilters(
+  redis = getRedis(),
+): Promise<AuctionFilters> {
+  const filters = await redis.get<AuctionFilters>(FILTERS_KEY);
+  return filters ? normalizeAuctionFilters(filters) : DEFAULT_AUCTION_FILTERS;
+}
+
+export async function saveAuctionFilters(
+  filters: AuctionFilters,
+  redis = getRedis(),
+): Promise<AuctionFilters> {
+  const normalized = normalizeAuctionFilters(filters);
+  await redis.set(FILTERS_KEY, normalized);
+  return normalized;
 }

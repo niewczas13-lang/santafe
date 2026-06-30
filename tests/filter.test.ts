@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesSantaFeCalligraphy } from "../lib/filter";
+import { matchesAuctionFilters, matchesSantaFeCalligraphy } from "../lib/filter";
 import type { AuctionVehicle } from "../lib/types";
 
 const baseVehicle: AuctionVehicle = {
@@ -31,6 +31,61 @@ describe("matchesSantaFeCalligraphy", () => {
           raw: { trim: "Hybrid Calligraphy AWD" },
         },
         { minYear: 2024 },
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("matchesAuctionFilters", () => {
+  const calligraphyVehicle: AuctionVehicle = {
+    ...baseVehicle,
+    title: "2024 HYUNDAI SANTA FE CALLIGRAPHY",
+    year: 2024,
+    make: "HYUNDAI",
+    model: "SANTA FE",
+    trim: "CALLIGRAPHY",
+    exteriorColor: "Hampton Gray",
+    interiorColor: "Black",
+    engine: "1.6L Hybrid",
+    runStatus: "run_and_drive",
+  };
+
+  it("matches preferred color, interior, engine and run status", () => {
+    expect(
+      matchesAuctionFilters(calligraphyVehicle, {
+        exteriorColor: "gray",
+        interiorColor: "black",
+        engine: "hybrid",
+        runStatuses: ["run_and_drive"],
+        requireCalligraphy: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects vehicles that do not match selected practical filters", () => {
+    expect(
+      matchesAuctionFilters(calligraphyVehicle, {
+        exteriorColor: "white",
+        requireCalligraphy: true,
+      }),
+    ).toBe(false);
+
+    expect(
+      matchesAuctionFilters(calligraphyVehicle, {
+        runStatuses: ["starts"],
+        requireCalligraphy: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("can keep listings with no run status when no-info is selected", () => {
+    expect(
+      matchesAuctionFilters(
+        { ...calligraphyVehicle, runStatus: "unknown" },
+        {
+          runStatuses: ["unknown"],
+          requireCalligraphy: true,
+        },
       ),
     ).toBe(true);
   });

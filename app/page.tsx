@@ -1,6 +1,7 @@
 import { getEnvValidationMessage, loadEnv } from "@/lib/env";
-import { getRecent, getStats } from "@/lib/storage";
-import type { AuctionVehicle, DashboardStats } from "@/lib/types";
+import { DashboardControls } from "./dashboard-controls";
+import { getAuctionFilters, getRecent, getStats } from "@/lib/storage";
+import type { AuctionFilters, AuctionVehicle, DashboardStats } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export default async function DashboardPage() {
     return <ConfigurationError message={state.error} />;
   }
 
-  const { stats, recent } = state;
+  const { stats, recent, filters } = state;
 
   return (
     <main className="min-h-[100dvh] px-4 py-8 text-[#20231d] sm:px-6 lg:px-10">
@@ -44,6 +45,8 @@ export default async function DashboardPage() {
               value={stats.lastCheck?.ok ? "Healthy" : "Needs attention"}
             />
           </div>
+
+          <DashboardControls initialFilters={filters} />
         </section>
 
         <section className="rounded-lg border border-[#d9dfd2] bg-white/85 shadow-[0_20px_50px_-30px_rgba(32,35,29,0.35)]">
@@ -79,14 +82,23 @@ export default async function DashboardPage() {
 }
 
 async function loadDashboardState(): Promise<
-  | { ok: true; stats: DashboardStats; recent: AuctionVehicle[] }
+  | {
+      ok: true;
+      stats: DashboardStats;
+      recent: AuctionVehicle[];
+      filters: AuctionFilters;
+    }
   | { ok: false; error: string }
 > {
   try {
     loadEnv();
-    const [stats, recent] = await Promise.all([getStats(), getRecent(20)]);
+    const [stats, recent, filters] = await Promise.all([
+      getStats(),
+      getRecent(20),
+      getAuctionFilters(),
+    ]);
 
-    return { ok: true, stats, recent };
+    return { ok: true, stats, recent, filters };
   } catch (error) {
     return { ok: false, error: getEnvValidationMessage(error) };
   }
@@ -121,8 +133,8 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function VehicleRow({ vehicle }: { vehicle: AuctionVehicle }) {
   return (
-    <article className="grid gap-4 px-5 py-4 transition-colors hover:bg-[#f7f8f5] sm:grid-cols-[6rem_1fr_auto] sm:px-6">
-      <div className="h-20 overflow-hidden rounded-md border border-[#d9dfd2] bg-[#eef2ea]">
+    <article className="grid gap-4 px-5 py-4 transition-colors hover:bg-[#f7f8f5] sm:grid-cols-[8rem_1fr_auto] sm:px-6">
+      <div className="h-24 overflow-hidden rounded-md border border-[#d9dfd2] bg-[#eef2ea]">
         {vehicle.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -154,6 +166,12 @@ function VehicleRow({ vehicle }: { vehicle: AuctionVehicle }) {
             .filter(Boolean)
             .join(" | ") || "Auction details not provided"}
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <DetailPill label="Kolor" value={vehicle.exteriorColor} />
+          <DetailPill label="Wnętrze" value={vehicle.interiorColor} />
+          <DetailPill label="Silnik" value={vehicle.engine} />
+          <DetailPill label="Status" value={formatRunStatus(vehicle.runStatus)} />
+        </div>
       </div>
 
       <a
@@ -168,16 +186,48 @@ function VehicleRow({ vehicle }: { vehicle: AuctionVehicle }) {
   );
 }
 
+function DetailPill({ label, value }: { label: string; value: string | undefined }) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <span className="rounded-full border border-[#d9dfd2] bg-white px-2.5 py-1 text-xs font-medium text-[#667161]">
+      <span className="text-[#20231d]">{label}:</span> {value}
+    </span>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="px-6 py-16 text-center">
       <p className="text-lg font-semibold tracking-tight">No matches stored yet</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#667161]">
-        Run the cron endpoint once to populate Redis. The first run marks current
-        listings as seen unless first-run notifications are enabled.
+        Użyj panelu filtrów i przycisku Sprawdź teraz. Zdjęcia aukcyjne pojawią
+        się przy wynikach, jeśli Copart albo IAAI zwróci miniaturę.
       </p>
     </div>
   );
+}
+
+function formatRunStatus(value: AuctionVehicle["runStatus"]): string | undefined {
+  if (value === "run_and_drive") {
+    return "odpala i rusza";
+  }
+
+  if (value === "starts") {
+    return "odpala";
+  }
+
+  if (value === "stationary") {
+    return "nie odpala / stoi";
+  }
+
+  if (value === "unknown") {
+    return "brak info";
+  }
+
+  return undefined;
 }
 
 function formatDate(value: string | undefined): string {
