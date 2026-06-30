@@ -1,7 +1,7 @@
 import { runActor } from "../apify";
 import type { AuctionVehicle } from "../types";
 import {
-  buildDefaultActorInput,
+  buildIaaiActorInput,
   fetchVehiclesFromUrls,
   normalizeVehicle,
   takeMax,
@@ -14,7 +14,7 @@ export async function fetchIaaiVehicles({
   if (env.APIFY_TOKEN && env.APIFY_IAAI_ACTOR_ID) {
     const items = await runActor<unknown>(
       env.APIFY_IAAI_ACTOR_ID,
-      buildDefaultActorInput(env),
+      buildIaaiActorInput(env),
       { token: env.APIFY_TOKEN },
     );
 

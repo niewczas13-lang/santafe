@@ -1,7 +1,7 @@
 import { runActor } from "../apify";
 import type { AuctionVehicle } from "../types";
 import {
-  buildDefaultActorInput,
+  buildCopartActorInput,
   fetchVehiclesFromUrls,
   normalizeVehicle,
   takeMax,
@@ -14,7 +14,7 @@ export async function fetchCopartVehicles({
   if (env.APIFY_TOKEN && env.APIFY_COPART_ACTOR_ID) {
     const items = await runActor<unknown>(
       env.APIFY_COPART_ACTOR_ID,
-      buildDefaultActorInput(env),
+      buildCopartActorInput(env),
       { token: env.APIFY_TOKEN },
     );
 

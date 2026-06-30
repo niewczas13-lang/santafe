@@ -4,6 +4,11 @@ import type { AuctionSource, AuctionVehicle } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
 
+const DEFAULT_COPART_SEARCH_URL =
+  "https://www.copart.com/lotSearchResults/?free=true&query=hyundai%20santa%20fe%20calligraphy";
+const DEFAULT_IAAI_SEARCH_URL =
+  "https://www.iaai.com/Search?Keyword=hyundai%20santa%20fe%20calligraphy";
+
 export type ProviderContext = {
   env: AppEnv;
 };
@@ -131,15 +136,20 @@ export async function fetchVehiclesFromUrls(
   return vehicles;
 }
 
-export function buildDefaultActorInput(env: AppEnv) {
+export function buildCopartActorInput(env: AppEnv) {
   return {
-    query: "Hyundai Santa Fe Calligraphy",
-    make: "Hyundai",
-    model: "Santa Fe",
-    trim: "Calligraphy",
-    minYear: env.MIN_YEAR,
-    country: ["USA", "Canada"],
+    startUrl: env.COPART_SEARCH_URLS[0] ?? DEFAULT_COPART_SEARCH_URL,
     maxItems: env.MAX_RESULTS_PER_SOURCE,
+  };
+}
+
+export function buildIaaiActorInput(env: AppEnv) {
+  return {
+    urls:
+      env.IAAI_SEARCH_URLS.length > 0
+        ? env.IAAI_SEARCH_URLS
+        : [DEFAULT_IAAI_SEARCH_URL],
+    maxitems: env.MAX_RESULTS_PER_SOURCE,
   };
 }
 
