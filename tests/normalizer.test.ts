@@ -84,4 +84,23 @@ describe("normalizeVehicle", () => {
       imageUrl: "https://vis.iaai.com/example-front.jpg",
     });
   });
+
+  it("finds nested image URLs from auction actor payloads", () => {
+    const vehicle = normalizeVehicle("iaai", {
+      title: "2025 HYUNDAI SANTA FE HYBRID CALLIGRAPHY",
+      detail_url: "https://www.iaai.com/VehicleDetail/45161509~US",
+      "Stock #": "63106399",
+      image_data: {
+        thumbnails: [
+          {
+            src: "https://vis.iaai.com/resizer?imageKeys=sample-key",
+          },
+        ],
+      },
+    });
+
+    expect(vehicle?.imageUrl).toBe(
+      "https://vis.iaai.com/resizer?imageKeys=sample-key",
+    );
+  });
 });

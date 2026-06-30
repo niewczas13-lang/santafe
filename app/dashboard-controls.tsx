@@ -23,11 +23,10 @@ export function DashboardControls({
   initialFilters: AuctionFilters;
 }) {
   const router = useRouter();
-  const [secret, setSecret] = useState("");
   const [filters, setFilters] = useState(initialFilters);
   const [state, setState] = useState<ActionState>({
     type: "idle",
-    message: "Sekret jest używany tylko do tej akcji.",
+    message: "Calligraphy, hybryda i wnętrze nie-czarne są ustawione jako domyślne.",
   });
 
   const selectedStatusLabels = useMemo(
@@ -43,14 +42,9 @@ export function DashboardControls({
   async function saveFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!secret.trim()) {
-      setState({ type: "error", message: "Wpisz CRON_SECRET." });
-      return;
-    }
-
     setState({ type: "loading", message: "Zapisuję filtry..." });
 
-    const payload = await saveCurrentFilters(secret, filters);
+    const payload = await saveCurrentFilters(filters);
 
     if (!payload.ok || !payload.filters) {
       setState({
@@ -66,13 +60,8 @@ export function DashboardControls({
   }
 
   async function refreshNow() {
-    if (!secret.trim()) {
-      setState({ type: "error", message: "Wpisz CRON_SECRET." });
-      return;
-    }
-
     setState({ type: "loading", message: "Sprawdzam aukcje..." });
-    const saved = await saveCurrentFilters(secret, filters);
+    const saved = await saveCurrentFilters(filters);
 
     if (!saved.ok || !saved.filters) {
       setState({
@@ -84,10 +73,9 @@ export function DashboardControls({
 
     setFilters(saved.filters);
 
-    const response = await fetch("/api/cron/check-auctions", {
+    const response = await fetch("/api/dashboard/check-auctions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ secret }),
     });
     const payload = (await response.json()) as {
       ok: boolean;
@@ -124,7 +112,8 @@ export function DashboardControls({
             Filtry aukcji
           </h2>
           <p className="mt-1 text-sm leading-6 text-[#667161]">
-            Kolor, wnętrze, silnik i status auta. Calligraphy zostaje pilnowane.
+            Szukamy Calligraphy 1.6 hybrid, bez czarnego wnętrza. Limit skanu:
+            200 wyników na źródło.
           </p>
         </div>
         <button
@@ -138,17 +127,9 @@ export function DashboardControls({
       </div>
 
       <div className="mt-4 grid gap-3">
-        <Field
-          label="CRON_SECRET"
-          value={secret}
-          type="password"
-          onChange={setSecret}
-          placeholder="Wklej sekret z Vercel env"
-        />
-
         <div className="grid gap-3 sm:grid-cols-3">
           <Field
-            label="Kolor auta"
+            label="Kolor auta opcjonalnie"
             value={filters.exteriorColor ?? ""}
             onChange={(value) =>
               setFilters((current) => ({ ...current, exteriorColor: value }))
@@ -156,12 +137,15 @@ export function DashboardControls({
             placeholder="np. gray, black, white"
           />
           <Field
-            label="Tapicerka / wnętrze"
-            value={filters.interiorColor ?? ""}
+            label="Tapicerka nie może być"
+            value={filters.excludedInteriorColor ?? ""}
             onChange={(value) =>
-              setFilters((current) => ({ ...current, interiorColor: value }))
+              setFilters((current) => ({
+                ...current,
+                excludedInteriorColor: value,
+              }))
             }
-            placeholder="np. black, gray"
+            placeholder="black"
           />
           <Field
             label="Silnik"
@@ -169,24 +153,27 @@ export function DashboardControls({
             onChange={(value) =>
               setFilters((current) => ({ ...current, engine: value }))
             }
-            placeholder="np. hybrid, 2.5"
+            placeholder="hybrid"
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-[#20231d]">
-          <input
-            type="checkbox"
-            checked={filters.requireCalligraphy}
-            onChange={(event) =>
+        <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
+          <div className="rounded-md border border-[#d9dfd2] bg-[#fbfcfa] px-3 py-2 text-sm text-[#667161]">
+            <span className="font-semibold text-[#20231d]">Calligraphy:</span>{" "}
+            zawsze wymagane
+          </div>
+          <Field
+            label="Max litry"
+            value={String(filters.maxEngineLiters ?? 2)}
+            onChange={(value) =>
               setFilters((current) => ({
                 ...current,
-                requireCalligraphy: event.target.checked,
+                maxEngineLiters: Number.parseFloat(value) || 2,
               }))
             }
-            className="size-4 accent-[#2f6f52]"
+            placeholder="2"
           />
-          Wymagaj wersji Calligraphy
-        </label>
+        </div>
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667161]">
@@ -242,11 +229,11 @@ export function DashboardControls({
   );
 }
 
-async function saveCurrentFilters(secret: string, filters: AuctionFilters) {
+async function saveCurrentFilters(filters: AuctionFilters) {
   const response = await fetch("/api/settings/filters", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ secret, filters }),
+    body: JSON.stringify({ filters }),
   });
 
   const payload = (await response.json()) as {

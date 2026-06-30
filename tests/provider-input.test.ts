@@ -21,7 +21,7 @@ describe("provider actor input builders", () => {
     expect(buildCopartActorInput(env)).toEqual({
       startUrl:
         "https://www.copart.com/lotSearchResults/?free=true&query=hyundai%20santa%20fe%20calligraphy",
-      maxItems: 50,
+      maxItems: 200,
     });
   });
 
@@ -43,7 +43,7 @@ describe("provider actor input builders", () => {
       urls: [
         "https://www.iaai.com/Search?Keyword=hyundai%20santa%20fe%20calligraphy",
       ],
-      maxitems: 50,
+      maxitems: 200,
     });
   });
 

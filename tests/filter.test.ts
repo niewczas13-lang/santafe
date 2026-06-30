@@ -56,6 +56,8 @@ describe("matchesAuctionFilters", () => {
         exteriorColor: "gray",
         interiorColor: "black",
         engine: "hybrid",
+        excludedInteriorColor: "",
+        maxEngineLiters: 2,
         runStatuses: ["run_and_drive"],
         requireCalligraphy: true,
       }),
@@ -66,6 +68,10 @@ describe("matchesAuctionFilters", () => {
     expect(
       matchesAuctionFilters(calligraphyVehicle, {
         exteriorColor: "white",
+        excludedInteriorColor: "",
+        engine: "",
+        maxEngineLiters: undefined,
+        runStatuses: [],
         requireCalligraphy: true,
       }),
     ).toBe(false);
@@ -73,6 +79,9 @@ describe("matchesAuctionFilters", () => {
     expect(
       matchesAuctionFilters(calligraphyVehicle, {
         runStatuses: ["starts"],
+        excludedInteriorColor: "",
+        engine: "",
+        maxEngineLiters: undefined,
         requireCalligraphy: true,
       }),
     ).toBe(false);
@@ -84,6 +93,59 @@ describe("matchesAuctionFilters", () => {
         { ...calligraphyVehicle, runStatus: "unknown" },
         {
           runStatuses: ["unknown"],
+          excludedInteriorColor: "",
+          engine: "",
+          maxEngineLiters: undefined,
+          requireCalligraphy: true,
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects black interiors by default-style practical filter", () => {
+    expect(
+      matchesAuctionFilters(calligraphyVehicle, {
+        excludedInteriorColor: "black",
+        engine: "hybrid",
+        maxEngineLiters: 2,
+        runStatuses: [],
+        requireCalligraphy: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects 2.5T non-hybrid engines and keeps 1.6 hybrid listings", () => {
+    expect(
+      matchesAuctionFilters(
+        {
+          ...calligraphyVehicle,
+          title: "2024 HYUNDAI SANTA FE CALLIGRAPHY",
+          engine: "2.5L Turbo",
+          interiorColor: "Gray",
+        },
+        {
+          engine: "hybrid",
+          maxEngineLiters: 2,
+          excludedInteriorColor: "black",
+          runStatuses: [],
+          requireCalligraphy: true,
+        },
+      ),
+    ).toBe(false);
+
+    expect(
+      matchesAuctionFilters(
+        {
+          ...calligraphyVehicle,
+          title: "2025 HYUNDAI SANTA FE HYBRID CALLIGRAPHY",
+          engine: "1.6L Hybrid",
+          interiorColor: "Gray",
+        },
+        {
+          engine: "hybrid",
+          maxEngineLiters: 2,
+          excludedInteriorColor: "black",
+          runStatuses: [],
           requireCalligraphy: true,
         },
       ),

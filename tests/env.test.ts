@@ -41,6 +41,7 @@ describe("loadEnv", () => {
 
     expect(env.APIFY_COPART_ACTOR_ID).toBeUndefined();
     expect(env.APIFY_IAAI_ACTOR_ID).toBeUndefined();
+    expect(env.MAX_RESULTS_PER_SOURCE).toBe(200);
   });
 
   it("accepts Vercel Upstash integration variable names", () => {

@@ -8,12 +8,14 @@ import {
 import { fetchCopartVehicles } from "@/lib/providers/copart";
 import { fetchIaaiVehicles } from "@/lib/providers/iaai";
 import { decodeVinValues } from "@/lib/vin";
+import { enrichVehicleImage } from "@/lib/listing-image";
 import {
   getAuctionFilters,
   getStats,
   isSeen,
   markSeen,
   saveLastCheck,
+  upsertRecentVehicle,
 } from "@/lib/storage";
 import { sendTelegramAlert } from "@/lib/telegram";
 import type {
@@ -94,11 +96,14 @@ async function handleCheck(request: Request) {
         env,
         filters,
       );
+      const enrichedMatches = await Promise.all(matches.map(enrichVehicleImage));
       const unseen: AuctionVehicle[] = [];
 
-      for (const vehicle of matches) {
+      for (const vehicle of enrichedMatches) {
         if (!(await isSeen(vehicle.id))) {
           unseen.push(vehicle);
+        } else {
+          await upsertRecentVehicle(vehicle);
         }
       }
 
@@ -112,13 +117,13 @@ async function handleCheck(request: Request) {
         await markSeen(vehicle);
       }
 
-      totalFound += matches.length;
+      totalFound += enrichedMatches.length;
       sourceSummaries.push({
         source: sourceConfig.source,
         enabled: true,
         ok: true,
         found: vehicles.length,
-        matched: matches.length,
+        matched: enrichedMatches.length,
         newFound: shouldNotify ? unseen.length : 0,
       });
     } catch (error) {

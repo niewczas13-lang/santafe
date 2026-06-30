@@ -33,7 +33,7 @@ Optional:
 - `APIFY_COPART_ACTOR_ID`: optional override. Defaults to `parseforge/copart-public-search-scraper` when `APIFY_TOKEN` is set.
 - `APIFY_IAAI_ACTOR_ID`: optional override. Defaults to `delectable_incubator/iaai-vehicles-scraper-low-cost` when `APIFY_TOKEN` is set.
 - `FIRST_RUN_NOTIFY`: defaults to `false`.
-- `MAX_RESULTS_PER_SOURCE`: defaults to `50`.
+- `MAX_RESULTS_PER_SOURCE`: defaults to `200`.
 - `ENABLE_DEBUG_ROUTES`: enables `/api/debug/test-telegram` outside local development.
 
 ## Telegram
@@ -78,12 +78,13 @@ Without Apify, paste saved-search URLs into `COPART_SEARCH_URLS` and `IAAI_SEARC
 The dashboard lets you save practical filters in Redis without redeploying:
 
 - exterior color
-- interior/upholstery color
-- engine text, for example `hybrid` or `2.5`
-- required Calligraphy trim
+- excluded interior/upholstery color, default `black`
+- engine text, default `hybrid`
+- max engine displacement, default below `2.0`
+- required Calligraphy trim, always enabled
 - vehicle run status: runs and drives, starts, stationary, or no info
 
-Use **Sprawdź teraz** to save the current filters and run the auction check immediately. The secret is sent only with that request and is not stored by the app.
+Use **Sprawdź teraz** to save the current filters and run the auction check immediately. The dashboard endpoint uses `CRON_SECRET` server-side, so the UI does not ask for the secret.
 
 ## Cron
 

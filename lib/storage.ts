@@ -39,8 +39,27 @@ export async function markSeen(
   redis = getRedis(),
 ): Promise<void> {
   await redis.sadd(SEEN_KEY, vehicle.id);
-  await redis.lpush(RECENT_KEY, JSON.stringify(vehicle));
-  await redis.ltrim(RECENT_KEY, 0, 99);
+  await upsertRecentVehicle(vehicle, redis);
+}
+
+export async function upsertRecentVehicle(
+  vehicle: AuctionVehicle,
+  redis = getRedis(),
+): Promise<void> {
+  const current = await getRecent(100, redis);
+  const next = [
+    vehicle,
+    ...current.filter((item) => item.id !== vehicle.id),
+  ].slice(0, 100);
+
+  await redis.del(RECENT_KEY);
+
+  if (next.length > 0) {
+    await redis.rpush(
+      RECENT_KEY,
+      ...next.map((item) => JSON.stringify(item)),
+    );
+  }
 }
 
 export async function getRecent(

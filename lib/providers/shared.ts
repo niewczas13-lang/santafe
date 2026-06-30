@@ -169,12 +169,12 @@ export function normalizeRunStatus(value: string | undefined): VehicleRunStatus 
   }
 
   if (
-    normalized.includes("run and drive") ||
-    normalized.includes("run drive") ||
-    normalized.includes("runs and drives") ||
-    normalized.includes("drives")
+    normalized.includes("does not start") ||
+    normalized.includes("non runner") ||
+    normalized.includes("not run") ||
+    normalized.includes("stationary")
   ) {
-    return "run_and_drive";
+    return "stationary";
   }
 
   if (
@@ -186,12 +186,12 @@ export function normalizeRunStatus(value: string | undefined): VehicleRunStatus 
   }
 
   if (
-    normalized.includes("does not start") ||
-    normalized.includes("non runner") ||
-    normalized.includes("not run") ||
-    normalized.includes("stationary")
+    normalized.includes("run and drive") ||
+    normalized.includes("run drive") ||
+    normalized.includes("runs and drives") ||
+    normalized.includes("drives")
   ) {
-    return "stationary";
+    return "run_and_drive";
   }
 
   return "unknown";
@@ -330,33 +330,65 @@ function pickImageUrl(item: UnknownRecord): string | undefined {
     return direct;
   }
 
-  for (const key of ["images", "Images", "photos", "Photos", "lot_images"]) {
-    const value = item[key];
+  const recursive = findNestedImageUrl(item);
+  if (recursive) {
+    return recursive;
+  }
 
-    if (Array.isArray(value)) {
-      for (const candidate of value) {
-        if (typeof candidate === "string" && candidate.trim()) {
-          return candidate.trim();
-        }
+  return undefined;
+}
 
-        if (isRecord(candidate)) {
-          const nested = pickString(candidate, [
-            "url",
-            "imageUrl",
-            "image_url",
-            "link",
-            "href",
-          ]);
+function findNestedImageUrl(value: unknown, depth = 0): string | undefined {
+  if (depth > 4) {
+    return undefined;
+  }
 
-          if (nested) {
-            return nested;
-          }
-        }
+  if (typeof value === "string") {
+    return looksLikeImageUrl(value) ? value.trim() : undefined;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findNestedImageUrl(item, depth + 1);
+      if (found) {
+        return found;
       }
+    }
+
+    return undefined;
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  for (const key of ["images", "Images", "photos", "Photos", "lot_images"]) {
+    const candidate = value[key];
+
+    const found = findNestedImageUrl(candidate, depth + 1);
+    if (found) {
+      return found;
+    }
+  }
+
+  for (const [key, candidate] of Object.entries(value)) {
+    const keyLooksRelevant = /image|photo|thumb|src|url/i.test(key);
+    if (!keyLooksRelevant) {
+      continue;
+    }
+
+    const found = findNestedImageUrl(candidate, depth + 1);
+    if (found) {
+      return found;
     }
   }
 
   return undefined;
+}
+
+function looksLikeImageUrl(value: string): boolean {
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) && /image|photo|img|vis\.iaai|copart/i.test(trimmed);
 }
 
 function buildTitle(item: UnknownRecord): string {

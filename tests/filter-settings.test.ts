@@ -6,7 +6,13 @@ import {
 
 describe("normalizeAuctionFilters", () => {
   it("returns practical defaults for empty input", () => {
-    expect(normalizeAuctionFilters(null)).toEqual(DEFAULT_AUCTION_FILTERS);
+    expect(normalizeAuctionFilters(null)).toEqual({
+      ...DEFAULT_AUCTION_FILTERS,
+      excludedInteriorColor: "black",
+      engine: "hybrid",
+      maxEngineLiters: 2,
+      requireCalligraphy: true,
+    });
   });
 
   it("trims text filters and keeps supported run statuses", () => {
@@ -14,15 +20,19 @@ describe("normalizeAuctionFilters", () => {
       normalizeAuctionFilters({
         exteriorColor: " gray ",
         interiorColor: " black ",
+        excludedInteriorColor: " beige ",
         engine: " hybrid ",
+        maxEngineLiters: "1.8",
         requireCalligraphy: false,
         runStatuses: ["starts", "unknown", "bad-value"],
       }),
     ).toEqual({
       exteriorColor: "gray",
       interiorColor: "black",
+      excludedInteriorColor: "beige",
       engine: "hybrid",
-      requireCalligraphy: false,
+      maxEngineLiters: 1.8,
+      requireCalligraphy: true,
       runStatuses: ["starts", "unknown"],
     });
   });

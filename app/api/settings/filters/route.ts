@@ -20,15 +20,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const env = loadEnv();
+    loadEnv();
     const body = (await request.json()) as {
-      secret?: unknown;
       filters?: unknown;
     };
-
-    if (body.secret !== env.CRON_SECRET) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    }
 
     const filters = await saveAuctionFilters(
       normalizeAuctionFilters(body.filters),

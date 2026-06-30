@@ -73,7 +73,7 @@ const rawEnvSchema = z.object({
   APIFY_COPART_ACTOR_ID: optionalString,
   APIFY_IAAI_ACTOR_ID: optionalString,
   FIRST_RUN_NOTIFY: booleanEnv(false),
-  MAX_RESULTS_PER_SOURCE: integerEnv(50),
+  MAX_RESULTS_PER_SOURCE: integerEnv(200),
   ENABLE_DEBUG_ROUTES: booleanEnv(false),
 });
 

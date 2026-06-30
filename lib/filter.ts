@@ -61,7 +61,18 @@ export function matchesAuctionFilters(
     return false;
   }
 
-  if (!matchesTextFilter(vehicle.engine, filters.engine)) {
+  if (
+    filters.excludedInteriorColor &&
+    matchesTextFilter(vehicle.interiorColor, filters.excludedInteriorColor)
+  ) {
+    return false;
+  }
+
+  if (!matchesTextFilter(engineSearchText(vehicle), filters.engine)) {
+    return false;
+  }
+
+  if (!matchesMaxEngineLiters(vehicle, filters.maxEngineLiters)) {
     return false;
   }
 
@@ -73,6 +84,32 @@ export function matchesAuctionFilters(
   }
 
   return true;
+}
+
+function engineSearchText(vehicle: AuctionVehicle): string {
+  return [vehicle.engine, vehicle.title, vehicle.raw ? JSON.stringify(vehicle.raw) : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function matchesMaxEngineLiters(
+  vehicle: AuctionVehicle,
+  maxEngineLiters: number | undefined,
+): boolean {
+  if (!maxEngineLiters) {
+    return true;
+  }
+
+  const text = engineSearchText(vehicle).toLowerCase();
+  const matches = [
+    ...text.matchAll(/\b([0-9](?:\.[0-9])?)\s*(?:l|t|liter|litre)\b/g),
+  ];
+
+  if (matches.length === 0) {
+    return true;
+  }
+
+  return matches.every((match) => Number.parseFloat(match[1]) < maxEngineLiters);
 }
 
 function matchesTextFilter(value: string | undefined, filter: string | undefined) {
